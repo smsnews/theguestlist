@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Πρόσκληση — The Guest List</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+    .font-display { font-family: 'Playfair Display', serif; }
+    .animate-in { animation: fadeIn 0.6s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .glass { background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); }
+    .gradient-hero { background: linear-gradient(135deg, #fdf2f8 0%, #fff1f2 50%, #fefce8 100%); }
+    .gradient-baptism { background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f0fdf4 100%); }
+    .gradient-party { background: linear-gradient(135deg, #faf5ff 0%, #fce7f3 50%, #fefce8 100%); }
+    input, select, textarea { font-size: 16px; }
+    .touch-btn { min-height: 48px; }
+    .timeline-item { position: relative; padding-left: 24px; border-left: 2px solid #e2e8f0; }
+    .timeline-item::before { content: ''; position: absolute; left: -6px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #e11d48; }
+  </style>
+</head>
+<body class="gradient-hero min-h-screen" id="body">
+  <div id="app" class="max-w-2xl mx-auto px-4 py-8 md:py-16 animate-in">
+    <div id="loading" class="text-center py-20">
+      <div class="w-12 h-12 border-4 border-rose-200 border-t-rose-600 rounded-full animate-spin mx-auto mb-4"></div>
+      <p class="text-slate-500">Φόρτωση πρόσκλησης...</p>
+    </div>
+    
+    <div id="error" class="hidden text-center py-20">
+      <div class="text-6xl mb-4">😕</div>
+      <h2 class="text-2xl font-bold text-slate-900 mb-2">Η πρόσκληση δεν βρέθηκε</h2>
+      <p class="text-slate-500">Ο σύνδεσμος είναι λανθασμένος ή έχει λήξει.</p>
+    </div>
+    
+    <div id="event-content" class="hidden space-y-8">
+      <div class="text-center">
+        <div class="inline-block bg-white/60 backdrop-blur-sm rounded-2xl px-6 py-2 mb-4 border border-white/50 shadow-sm">
+          <span id="event-type-badge" class="text-rose-600 font-bold text-sm tracking-wider uppercase">Πρόσκληση</span>
+        </div>
+        <h1 id="event-name" class="text-3xl md:text-5xl font-bold text-slate-900 mb-3 tracking-tight font-display"></h1>
+        <div id="countdown" class="flex justify-center gap-2 md:gap-4 mt-4">
+          <div class="bg-white/70 rounded-xl p-3 text-center min-w-[70px] border border-white/50 shadow-sm"><p class="text-2xl md:text-3xl font-bold text-rose-600" id="cd-days">0</p><p class="text-xs text-slate-500 uppercase">Ημέρες</p></div>
+          <div class="bg-white/70 rounded-xl p-3 text-center min-w-[70px] border border-white/50 shadow-sm"><p class="text-2xl md:text-3xl font-bold text-rose-600" id="cd-hours">0</p><p class="text-xs text-slate-500 uppercase">Ώρες</p></div>
+          <div class="bg-white/70 rounded-xl p-3 text-center min-w-[70px] border border-white/50 shadow-sm"><p class="text-2xl md:text-3xl font-bold text-rose-600" id="cd-minutes">0</p><p class="text-xs text-slate-500 uppercase">Λεπτά</p></div>
+          <div class="bg-white/70 rounded-xl p-3 text-center min-w-[70px] border border-white/50 shadow-sm"><p class="text-2xl md:text-3xl font-bold text-rose-600" id="cd-seconds">0</p><p class="text-xs text-slate-500 uppercase">Δευτ.</p></div>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="location-cards">
+        <div class="glass rounded-2xl p-6 border border-white/50 shadow-sm text-center" id="church-card">
+          <div class="text-3xl mb-2">⛪</div>
+          <p class="text-sm text-slate-500 font-medium uppercase tracking-wider">Μυστήριο</p>
+          <p id="event-church" class="text-lg font-bold text-slate-900 mt-1"></p>
+          <div id="church-map" class="mt-3 rounded-xl overflow-hidden h-40 bg-slate-100"></div>
+        </div>
+        <div class="glass rounded-2xl p-6 border border-white/50 shadow-sm text-center" id="reception-card">
+          <div class="text-3xl mb-2">🥂</div>
+          <p class="text-sm text-slate-500 font-medium uppercase tracking-wider">Δεξίωση</p>
+          <p id="event-location" class="text-lg font-bold text-slate-900 mt-1"></p>
+          <div id="reception-map" class="mt-3 rounded-xl overflow-hidden h-40 bg-slate-100"></div>
+        </div>
+      </div>
+      
+      <div class="glass rounded-2xl p-6 border border-white/50 shadow-sm text-center">
+        <div class="text-3xl mb-2">📅</div>
+        <p class="text-sm text-slate-500 font-medium uppercase tracking-wider">Ημερομηνία</p>
+        <p id="event-date" class="text-xl font-bold text-slate-900 mt-1"></p>
+      </div>
+      
+      <div id="program-section" class="hidden glass rounded-2xl p-6 border border-white/50 shadow-sm">
+        <h3 class="text-xl font-bold text-slate-900 mb-4 text-center">📋 Πρόγραμμα Ημέρας</h3>
+        <div id="program-timeline" class="space-y-4"></div>
+      </div>
+      
+      <div id="spotify-section" class="hidden glass rounded-2xl p-6 border border-white/50 shadow-sm text-center">
+        <div class="text-3xl mb-2">🎵</div>
+        <h3 class="text-xl font-bold text-slate-900 mb-2">Η Μουσική μας</h3>
+        <p class="text-slate-500 text-sm mb-4">Ακούστε τη playlist που ετοιμάσαμε για εσάς!</p>
+        <a id="spotify-link" href="#" target="_blank" class="inline-flex items-center gap-2 bg-[#1DB954] hover:bg-[#1ed760] text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md touch-btn">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141 4.26-1.38 9.48-.72 13.199 1.68.36.18.54.78.24 1.14zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.179-1.38-.779-.18-.6.18-1.2.78-1.38 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+          Άκουσε στο Spotify
+        </a>
+      </div>
+      
+      <div id="iban-section" class="hidden glass rounded-2xl p-6 border border-white/50 shadow-sm text-center">
+        <div class="text-3xl mb-2">🎁</div>
+        <h3 class="text-xl font-bold text-slate-900 mb-2">Λίστα Δώρων</h3>
+        <p class="text-slate-500 text-sm mb-4">Η παρουσία σας είναι το πιο όμορφο δώρο!<br>Αν επιθυμείτε, μπορείτε να συνεισφέρετε στον λογαριασμό μας.</p>
+        <div class="flex items-center justify-center gap-2 bg-slate-50 rounded-xl p-3 border border-slate-200">
+          <code id="event-iban" class="text-sm font-mono text-slate-700"></code>
+          <button onclick="copyIBAN()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">Αντιγραφή</button>
+        </div>
+      </div>
+      
+      <div id="contact-section" class="hidden glass rounded-2xl p-6 border border-white/50 shadow-sm text-center">
+        <div class="text-3xl mb-2">📞</div>
+        <h3 class="text-xl font-bold text-slate-900 mb-2">Επικοινωνία</h3>
+        <p class="text-slate-500 text-sm mb-2">Για οποιαδήποτε απορία, επικοινωνήστε με:</p>
+        <p id="contact-name" class="font-bold text-slate-900"></p>
+        <a id="contact-phone" href="#" class="inline-block mt-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-md touch-btn">📞 Κλήση</a>
+      </div>
+      
+      <div class="glass rounded-2xl p-6 md:p-8 border border-white/50 shadow-lg">
+        <div class="text-center mb-6">
+          <h2 class="text-2xl font-bold text-slate-900">Επιβεβαίωση Συμμετοχής</h2>
+          <p class="text-slate-500 text-sm mt-1">Συμπληρώστε τα στοιχεία σας παρακάτω</p>
+        </div>
+        <form id="rsvp-form" onsubmit="handleRSVP(event)" class="space-y-4">
+          <input type="hidden" id="guest-token">
+          <div><label class="block text-sm font-semibold text-slate-700 mb-2">Ονοματεπώνυμο *</label><input type="text" id="rsvp-name" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all bg-white/80"></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-semibold text-slate-700 mb-2">Τηλέφωνο</label><input type="tel" id="rsvp-phone" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all bg-white/80"></div>
+            <div><label class="block text-sm font-semibold text-slate-700 mb-2">Email</label><input type="email" id="rsvp-email" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all bg-white/80"></div>
+          </div>
+          <div><label class="block text-sm font-semibold text-slate-700 mb-2">Θα παρευρεθείτε; *</label>
+            <div class="grid grid-cols-3 gap-3">
+              <label class="cursor-pointer"><input type="radio" name="rsvp-attending" value="yes" required class="peer hidden"><div class="text-center p-3 rounded-xl border-2 border-slate-200 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all touch-btn"><div class="text-2xl mb-1">✅</div><div class="text-sm font-bold text-slate-700">Ναι</div></div></label>
+              <label class="cursor-pointer"><input type="radio" name="rsvp-attending" value="no" class="peer hidden"><div class="text-center p-3 rounded-xl border-2 border-slate-200 peer-checked:border-red-500 peer-checked:bg-red-50 transition-all touch-btn"><div class="text-2xl mb-1">❌</div><div class="text-sm font-bold text-slate-700">Όχι</div></div></label>
+              <label class="cursor-pointer"><input type="radio" name="rsvp-attending" value="pending" class="peer hidden"><div class="text-center p-3 rounded-xl border-2 border-slate-200 peer-checked:border-amber-500 peer-checked:bg-amber-50 transition-all touch-btn"><div class="text-2xl mb-1">🤔</div><div class="text-sm font-bold text-slate-700">Ίσως</div></div></label>
+            </div>
+          </div>
+          <div><label class="block text-sm font-semibold text-slate-700 mb-2">Πόσοι θα έρθετε;</label><select id="rsvp-count" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none bg-white/80"><option value="1">1 άτομο</option><option value="2">2 άτομα</option><option value="3">3 άτομα</option><option value="4">4 άτομα</option><option value="5">5 άτομα</option><option value="6">6 άτομα</option><option value="7">7 άτομα</option><option value="8">8 άτομα</option><option value="9">9 άτομα</option><option value="10">10 άτομα</option></select></div>
+          <div><label class="block text-sm font-semibold text-slate-700 mb-2">Διατροφικές προτιμήσεις / Σημειώσεις</label><textarea id="rsvp-notes" rows="3" placeholder="π.χ. Χορτοφαγικό, αλλεργίες..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all bg-white/80 resize-none"></textarea></div>
+          <button type="submit" id="rsvp-submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white px-4 py-4 rounded-xl font-bold text-lg transition-all shadow-lg shadow-rose-200 touch-btn">Υποβολή Απάντησης</button>
+        </form>
+        <div id="rsvp-success" class="hidden text-center py-8">
+          <div class="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center text-4xl mx-auto mb-4">🎉</div>
+          <h3 class="text-2xl font-bold text-slate-900 mb-2">Ευχαριστούμε!</h3>
+          <p class="text-slate-500">Η απάντησή σας καταχωρήθηκε επιτυχώς.</p>
+        </div>
+      </div>
+      
+      <div class="text-center pt-8 pb-12">
+        <p class="text-slate-400 text-sm">Δημιουργήθηκε με ❤️ στο <a href="/" class="text-rose-600 font-bold hover:underline">theguestlist.gr</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const db = supabase.createClient('https://vozfcvludahuvwatfwmy.supabase.co', 'sb_publishable_DZ-ZKOFhCnCmhdbaLSUG_g_XAH53N1E');
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    const eventId = params.get('id');
+    let guestData = null;
+    let eventData = null;
+    let countdownInterval = null;
+
+    async function loadInvitation() {
+      if (!token && !eventId) return showError();
+      try {
+        if (token) {
+          const { data: guest, error: gErr } = await db.from('guests').select('*, events(*)').eq('rsvp_token', token).single();
+          if (gErr || !guest) return showError();
+          guestData = guest;
+          eventData = guest.events;
+        } else {
+          const { data: event, error: eErr } = await db.from('events').select('*').or(`id.eq.${eventId},custom_slug.eq.${eventId}`).single();
+          if (eErr || !event) return showError();
+          eventData = event;
+        }
+        renderEvent();
+      } catch (err) { showError(); }
+    }
+
+    function showError() {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('error').classList.remove('hidden');
+    }
+
+    function renderEvent() {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('event-content').classList.remove('hidden');
+      
+      const typeLabels = { wedding: '💒 Γάμος', baptism: '🕊️ Βάφτιση', party: '🎉 Πάρτυ', corporate: '🏢 Εκδήλωση' };
+      const bodyGrads = { wedding: 'gradient-hero', baptism: 'gradient-baptism', party: 'gradient-party', corporate: 'gradient-hero' };
+      document.body.className = bodyGrads[eventData.type] || 'gradient-hero';
+      document.getElementById('event-type-badge').textContent = typeLabels[eventData.type] || 'Εκδήλωση';
+      document.getElementById('event-name').textContent = eventData.name;
+      document.getElementById('event-date').textContent = new Date(eventData.date).toLocaleDateString('el-GR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      
+      const eventDate = new Date(eventData.date + 'T00:00:00');
+      function updateCountdown() {
+        const now = new Date();
+        const diff = eventDate - now;
+        if (diff <= 0) { 
+          document.getElementById('countdown').innerHTML = '<div class="text-2xl font-bold text-emerald-600">🎉 Σήμερα!</div>'; 
+          clearInterval(countdownInterval); 
+          return; 
+        }
+        document.getElementById('cd-days').textContent = Math.floor(diff / (1000 * 60 * 60 * 24));
+        document.getElementById('cd-hours').textContent = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        document.getElementById('cd-minutes').textContent = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        document.getElementById('cd-seconds').textContent = Math.floor((diff % (1000 * 60)) / 1000);
+      }
+      updateCountdown();
+      countdownInterval = setInterval(updateCountdown, 1000);
+      
+      // ΠΡΟΣΟΧΗ: Βάλε το δικό σου Google Maps API Key παρακάτω στο src=...
+      if (eventData.church_location) {
+        document.getElementById('event-church').textContent = eventData.church_location;
+        document.getElementById('church-map').innerHTML = `<iframe width="100%" height="100%" style="border:0" loading="lazy" allowfullscreen src="https://www.google.com/maps/embed/v1/place?key=ΒΑΛΕ_ΤΟ_ΔΙΚΟ_ΣΟΥ_API_KEY_ΕΔΩ&q=${encodeURIComponent(eventData.church_location)}"></iframe>`;
+      } else {
+        document.getElementById('church-card').classList.add('hidden');
+      }
+      
+      document.getElementById('event-location').textContent = eventData.location || 'Θα ανακοινωθεί';
+      if (eventData.location) {
+        document.getElementById('reception-map').innerHTML = `<iframe width="100%" height="100%" style="border:0" loading="lazy" allowfullscreen src="https://www.google.com/maps/embed/v1/place?key=ΒΑΛΕ_ΤΟ_ΔΙΚΟ_ΣΟΥ_API_KEY_ΕΔΩ&q=${encodeURIComponent(eventData.location)}"></iframe>`;
+      }
+      
+      // ΔΙΟΡΘΩΣΗ Regex & Newline εδώ:
+      if (eventData.program) {
+        document.getElementById('program-section').classList.remove('hidden');
+        const lines = eventData.program.split('\n').filter(l => l.trim());
+        document.getElementById('program-timeline').innerHTML = lines.map(line => {
+          const timeMatch = line.match(/^([0-9]{1,2}:[0-9]{2})\s*[-–]\s*(.+)$/);
+          if (timeMatch) {
+            return `<div class="timeline-item"><span class="text-rose-600 font-bold text-sm">${timeMatch[1]}</span><p class="text-slate-700 font-medium">${timeMatch[2]}</p></div>`;
+          }
+          return `<div class="timeline-item"><p class="text-slate-700">${line}</p></div>`;
+        }).join('');
+      }
+      
+      if (eventData.spotify_playlist) {
+        document.getElementById('spotify-section').classList.remove('hidden');
+        document.getElementById('spotify-link').href = `https://open.spotify.com/playlist/${eventData.spotify_playlist}`;
+      }
+      
+      if (eventData.gift_iban) {
+        document.getElementById('iban-section').classList.remove('hidden');
+        document.getElementById('event-iban').textContent = eventData.gift_iban;
+      }
+      
+      if (eventData.contact_name || eventData.contact_phone) {
+        document.getElementById('contact-section').classList.remove('hidden');
+        document.getElementById('contact-name').textContent = eventData.contact_name || 'Ο διοργανωτής';
+        if (eventData.contact_phone) {
+          document.getElementById('contact-phone').href = `tel:${eventData.contact_phone}`;
+          document.getElementById('contact-phone').textContent = `📞 ${eventData.contact_phone}`;
+        }
+      }
+      
+      if (guestData) {
+        document.getElementById('guest-token').value = guestData.rsvp_token;
+        if (guestData.name && !guestData.name.startsWith('Οικογένεια')) document.getElementById('rsvp-name').value = guestData.name;
+        if (guestData.phone) document.getElementById('rsvp-phone').value = guestData.phone;
+        if (guestData.email) document.getElementById('rsvp-email').value = guestData.email;
+        const maxCount = guestData.party_size || 1;
+        const select = document.getElementById('rsvp-count');
+        select.innerHTML = Array.from({length: maxCount}, (_, i) => `<option value="${i + 1}">${i + 1} άτομο${i > 0 ? 'α' : ''}</option>`).join('');
+        if (guestData.rsvp_status && guestData.rsvp_status !== 'pending') {
+          document.getElementById('rsvp-form').classList.add('hidden');
+          document.getElementById('rsvp-success').classList.remove('hidden');
+        }
+      }
+    }
+
+    function copyIBAN() {
+      const iban = document.getElementById('event-iban').textContent;
+      navigator.clipboard.writeText(iban).then(() => alert('Το IBAN αντιγράφηκε!'));
+    }
+
+    async function handleRSVP(e) {
+      e.preventDefault();
+      const btn = document.getElementById('rsvp-submit');
+      btn.disabled = true; 
+      btn.textContent = 'Αποστολή...';
+      
+      const name = document.getElementById('rsvp-name').value.trim();
+      const phone = document.getElementById('rsvp-phone').value.trim();
+      const email = document.getElementById('rsvp-email').value.trim();
+      const attending = document.querySelector('input[name="rsvp-attending"]:checked')?.value;
+      const count = parseInt(document.getElementById('rsvp-count').value) || 1;
+      const notes = document.getElementById('rsvp-notes').value.trim();
+      
+      if (!name || !attending) { 
+        alert('Συμπληρώστε τα υποχρεωτικά πεδία'); 
+        btn.disabled = false; 
+        btn.textContent = 'Υποβολή Απάντησης'; 
+        return; 
+      }
+      
+      try {
+        const token = guestData ? guestData.rsvp_token : null;
+        if (token) {
+          // Δοκιμάζουμε να στείλουμε μέσω Supabase Edge Function (αν την έχεις στήσει)
+          const { data, error } = await db.functions.invoke('rsvp', { 
+            body: { token, name, phone, email, attending, rsvp_count: count, dietary: notes } 
+          });
+          
+          // Αν δεν υπάρχει ή αποτύχει η function, κάνουμε fallback σε update 
+          // (Προσοχή: πρέπει τα Row Level Security Policies του Supabase να το επιτρέπουν)
+          if (error || !data?.success) {
+            const { error: upErr } = await db.from('guests').update({ 
+              name, 
+              phone, 
+              email, 
+              rsvp_status: attending, 
+              rsvp_count: count, 
+              dietary_restrictions: notes 
+            }).eq('rsvp_token', token);
+            
+            if (upErr) throw upErr;
+          }
+        }
+        
+        document.getElementById('rsvp-form').classList.add('hidden');
+        document.getElementById('rsvp-success').classList.remove('hidden');
+      } catch (err) {
+        alert('Σφάλμα: ' + (err.message || 'Δοκιμάστε ξανά'));
+        btn.disabled = false; 
+        btn.textContent = 'Υποβολή Απάντησης';
+      }
+    }
+
+    loadInvitation();
+  </script>
+</body>
+</html>
