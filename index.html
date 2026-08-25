@@ -814,7 +814,7 @@ const app = {
   async handlePhotoUpload(e) {
     const files = Array.from(e.target.files); if (!files.length) return;
 
-    // FIX #3: Έλεγχος ορίου πριν το upload
+    // Έλεγχος ορίου πριν το upload
     const isPremium = this.currentEvent?.plan === 'premium';
     const limit = isPremium ? 100 : 5;
     if (!isPremium && this.photos.length + files.length > limit) {
@@ -826,19 +826,61 @@ const app = {
     const progressDiv = document.getElementById('upload-progress');
     const status = document.getElementById('upload-status');
     progressDiv.classList.remove('hidden');
+    let successCount = 0;
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       status.textContent = `Ανέβασμα ${i+1} / ${files.length}...`;
       progressBar.style.width = `${((i) / files.length) * 100}%`;
+
       const path = `${this.user.id}/${this.currentEvent.id}/${Date.now()}_${file.name}`;
+
+      // 1. Upload στο Storage
       const { error: upError } = await this.db.storage.from('event-photos').upload(path, file);
-      if (upError) { this.showToast(`Σφάλμα: ${file.name}`); continue; }
-      const { data: { publicUrl } } = this.db.storage.from('event-photos').getPublicUrl(path);
-      await this.db.from('event_photos').insert([{ event_id: this.currentEvent.id, user_id: this.user.id, url: publicUrl, storage_path: path }]);
+      if (upError) { 
+        console.error('Upload error:', upError);
+        this.showToast(`Σφάλμα upload: ${upError.message}`); 
+        continue; 
+      }
+
+      // 2. Πάρε το public URL
+      const { data: urlData, error: urlError } = this.db.storage.from('event-photos').getPublicUrl(path);
+      let publicUrl = null;
+      if (urlData && urlData.publicUrl) {
+        publicUrl = urlData.publicUrl;
+      } else {
+        // Fallback: φτιάξε το URL χειροκίνητα
+        publicUrl = `https://vozfcvludahuvwatfwmy.supabase.co/storage/v1/object/public/event-photos/${path}`;
+      }
+
+      console.log('DEBUG: publicUrl=', publicUrl);
+
+      // 3. Insert στο table event_photos
+      const { error: insertError } = await this.db.from('event_photos').insert([{ 
+        event_id: this.currentEvent.id, 
+        user_id: this.user.id, 
+        url: publicUrl, 
+        storage_path: path 
+      }]);
+
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        this.showToast(`Σφάλμα βάσης: ${insertError.message}`);
+        // Διέγραψε το file από storage αν το insert απέτυχε
+        await this.db.storage.from('event-photos').remove([path]);
+        continue;
+      }
+
+      successCount++;
     }
+
     progressBar.style.width = '100%';
-    status.textContent = 'Ολοκληρώθηκε!';
-    setTimeout(() => { progressDiv.classList.add('hidden'); this.closeModal('modal-upload'); this.refreshPhotos(); }, 800);
+    status.textContent = `Ολοκληρώθηκε! ${successCount}/${files.length} φωτογραφίες.`;
+    setTimeout(() => { 
+      progressDiv.classList.add('hidden'); 
+      this.closeModal('modal-upload'); 
+      this.refreshPhotos(); 
+    }, 1200);
   },
   openCoverSelector() {
     const gallery = document.getElementById('cover-gallery');
