@@ -482,6 +482,30 @@
   </div>
 </div>
 
+<!-- MODAL: Edit Guest -->
+<div id="modal-edit-guest" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full animate-in">
+    <div class="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-lg md:text-xl font-bold text-slate-900">✏️ Επεξεργασία Καλεσμένου</h3>
+      <button onclick="app.closeModal('modal-edit-guest')" class="text-slate-400 hover:text-slate-600 transition-colors touch-btn p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    </div>
+    <form onsubmit="app.updateGuest(event)" class="p-4 md:p-6 space-y-4">
+      <input type="hidden" id="edit-guest-id">
+      <div><label class="block text-sm font-semibold text-slate-700 mb-2">Ονοματεπώνυμο *</label><input type="text" id="edit-g-name" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Άτομα</label><input type="number" id="edit-g-party" min="1" max="20" value="1" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Πλευρά</label><select id="edit-g-side" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none bg-white"><option value="">—</option><option value="groom">Γαμπρού</option><option value="bride">Νύφης</option></select></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Τηλέφωνο</label><input type="tel" id="edit-g-phone" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Email</label><input type="email" id="edit-g-email" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+      </div>
+      <div><label class="block text-sm font-semibold text-slate-700 mb-2">Ομάδα</label><select id="edit-g-category" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none bg-white"><option value="family">Οικογένεια</option><option value="friends">Φίλοι</option><option value="koubaroi">Κουμπάροι</option><option value="other">Άλλο</option></select></div>
+      <button type="submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-md touch-btn">💾 Αποθήκευση Αλλαγών</button>
+    </form>
+  </div>
+</div>
+
 <!-- MODAL: SMS History -->
 <div id="modal-sms-history" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
   <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-in">
@@ -963,6 +987,35 @@ const app = {
     const {error}=await this.db.from('guests').insert([{event_id:this.currentEvent.id,user_id:this.user.id,name:displayName,phone,email,party_size:partySize,side,category,is_family:isFamily,rsvp_token:this.generateToken()}]);
     if(error){this.showToast('Σφάλμα');return;}document.getElementById('g-name').value='';document.getElementById('g-party').value='1';document.getElementById('g-phone').value='';document.getElementById('g-email').value='';document.getElementById('g-family').checked=false;this.showToast('Ο καλεσμένος προστέθηκε!');this.refreshCurrentEvent();
   },
+  openEditGuestModal(id){
+    const g=this.guests.find(x=>x.id===id);
+    if(!g)return;
+    document.getElementById('edit-guest-id').value=g.id;
+    document.getElementById('edit-g-name').value=g.name||'';
+    document.getElementById('edit-g-party').value=g.party_size||1;
+    document.getElementById('edit-g-phone').value=g.phone||'';
+    document.getElementById('edit-g-email').value=g.email||'';
+    document.getElementById('edit-g-side').value=g.side||'';
+    document.getElementById('edit-g-category').value=g.category||'family';
+    document.getElementById('modal-edit-guest').classList.remove('hidden');
+    document.getElementById('modal-edit-guest').classList.add('flex');
+  },
+  async updateGuest(e){
+    e.preventDefault();
+    const id=document.getElementById('edit-guest-id').value;
+    const name=document.getElementById('edit-g-name').value.trim();
+    const partySize=parseInt(document.getElementById('edit-g-party').value)||1;
+    const phone=document.getElementById('edit-g-phone').value.trim();
+    const email=document.getElementById('edit-g-email').value.trim();
+    const side=document.getElementById('edit-g-side').value;
+    const category=document.getElementById('edit-g-category').value;
+    if(!name)return;
+    const {error}=await this.db.from('guests').update({name,phone,email,party_size:partySize,side,category}).eq('id',id);
+    if(error){this.showToast('Σφάλμα ενημέρωσης');return;}
+    this.showToast('Ο καλεσμένος ενημερώθηκε!');
+    this.closeModal('modal-edit-guest');
+    this.refreshCurrentEvent();
+  },
   async deleteGuest(id){if(!confirm('Διαγραφή καλεσμένου;'))return;await this.db.from('guests').delete().eq('id',id);this.refreshCurrentEvent();},
   renderGuests(){
     const tbody=document.getElementById('guests-table-body');
@@ -971,7 +1024,8 @@ const app = {
     document.getElementById('guest-count-display').textContent=`${this.guests.length} προσκλήσεις / ${totalPeople} άτομα (όριο: ${limit})`;
     console.log('RENDER GUESTS DEBUG:', this.guests.map(g=>({name:g.name,rsvp:g.rsvp_status,token:g.rsvp_token?.slice(0,8)})));
     if(!this.guests.length){tbody.innerHTML=`<tr><td colspan="7" class="px-4 py-8 text-center text-slate-400 text-sm">Δεν υπάρχουν καλεσμένοι ακόμα</td></tr>`;return;}
-    tbody.innerHTML=this.guests.map(g=>{const rsvpClass=g.rsvp_status==='yes'?'bg-emerald-100 text-emerald-700':g.rsvp_status==='no'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700';const rsvpText=g.rsvp_status==='yes'?`✅ ${g.rsvp_count||g.party_size||1}/${g.party_size||1}`:g.rsvp_status==='no'?'❌ Δεν έρχεται':'⏳ Αναμονή';const checkinBtn=g.checked_in?`<span class="text-emerald-600 font-bold text-xs">✅ Έφτασε</span>`:`<button onclick="app.checkInGuest('${g.id}')" class="text-slate-400 hover:text-emerald-600 transition-colors text-xs font-bold">⬜ Check-in</button>`;const smsBadge=g.sms_count>0?`<span class="ml-1 text-xs" title="${g.sms_count} SMS">✉️ ${g.sms_count}</span>`:'';return `<tr class="hover:bg-slate-50 transition-colors"><td class="px-3 md:px-4 py-3"><div class="font-semibold text-slate-900 text-sm">${this.escapeHTML(g.name)}</div><div class="text-xs text-slate-400">${g.phone?'📞 '+this.escapeHTML(g.phone):''}${g.email?' ✉️ '+this.escapeHTML(g.email):''}${smsBadge}</div></td><td class="px-3 md:px-4 py-3 text-xs"><span class="px-2 py-1 rounded-full ${g.side==='groom'?'bg-blue-100 text-blue-700':g.side==='bride'?'bg-pink-100 text-pink-700':'bg-slate-100 text-slate-600'}">${g.side==='groom'?'Γαμπρού':g.side==='bride'?'Νύφης':'—'}</span></td><td class="px-3 md:px-4 py-3 text-xs text-slate-600">${this.escapeHTML(g.category||'—')}</td><td class="px-3 md:px-4 py-3 text-xs text-slate-600">${this.escapeHTML(g.table_name||'—')}</td><td class="px-3 md:px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-bold ${rsvpClass}">${rsvpText}</span></td><td class="px-3 md:px-4 py-3">${checkinBtn}</td><td class="px-3 md:px-4 py-3 text-right no-print"><button onclick="app.copyRsvpLink('${g.rsvp_token}')" class="text-slate-400 hover:text-blue-600 transition-colors text-xs mr-2" title="RSVP Link">🔗</button><button onclick="app.sendGuestSMS('${g.id}')" class="text-slate-400 hover:text-sky-600 transition-colors text-xs mr-2" title="SMS">💬</button><button onclick="app.openSMSHistory('${g.id}')" class="text-slate-400 hover:text-sky-600 transition-colors text-xs mr-2" title="Ιστορικό SMS">📨</button><button onclick="app.deleteGuest('${g.id}')" class="text-slate-400 hover:text-red-600 transition-colors text-xs">🗑️</button></td></tr>`;}).join('');
+    tbody.innerHTML=this.guests.map(g=>{const rsvpClass=g.rsvp_status==='yes'?'bg-emerald-100 text-emerald-700':g.rsvp_status==='no'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700';const rsvpText=g.rsvp_status==='yes'?`✅ ${g.rsvp_count||g.party_size||1}/${g.party_size||1}`:g.rsvp_status==='no'?'❌ Δεν έρχεται':'⏳ Αναμονή';const checkinBtn=g.checked_in?`<span class="text-emerald-600 font-bold text-xs">✅ Έφτασε</span>`:`<button onclick="app.checkInGuest('${g.id}')" class="text-slate-400 hover:text-emerald-600 transition-colors text-xs font-bold">⬜ Check-in</button>`;const smsBadge=g.sms_count>0?`<span class="ml-1 text-xs" title="${g.sms_count} SMS">✉️ ${g.sms_count}</span>`:'';return `<tr class="hover:bg-slate-50 transition-colors"><td class="px-3 md:px-4 py-3"><div class="font-semibold text-slate-900 text-sm">${this.escapeHTML(g.name)}</div><div class="text-xs text-slate-400">${g.phone?'📞 '+this.escapeHTML(g.phone):''}${g.email?' ✉️ '+this.escapeHTML(g.email):''}${smsBadge}</div></td><td class="px-3 md:px-4 py-3 text-xs"><span class="px-2 py-1 rounded-full ${g.side==='groom'?'bg-blue-100 text-blue-700':g.side==='bride'?'bg-pink-100 text-pink-700':'bg-slate-100 text-slate-600'}">${g.side==='groom'?'Γαμπρού':g.side==='bride'?'Νύφης':'—'}</span></td><td class="px-3 md:px-4 py-3 text-xs text-slate-600">${this.escapeHTML(g.category||'—')}</td><td class="px-3 md:px-4 py-3 text-xs text-slate-600">${this.escapeHTML(g.table_name||'—')}</td><td class="px-3 md:px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-bold ${rsvpClass}">${rsvpText}</span></td><td class="px-3 md:px-4 py-3">${checkinBtn}</td><td class="px-3 md:px-4 py-3 text-right no-print"><button onclick="app.openEditGuestModal('${g.id}')" class="text-slate-400 hover:text-amber-600 transition-colors text-xs mr-2" title="Επεξεργασία">✏️</button><button onclick="app.copyRsvpLink('${g.rsvp_token}')" class="text-slate-400 hover:text-blue-600 transition-colors text-xs mr-2" title="RSVP Link">🔗</button><button onclick="app.sendGuestSMS('${g.id}')" class="text-slate-400 hover:text-sky-600 transition-colors text-xs mr-2" title="SMS">💬</button><button onclick="app.openSMSHistory('${g.id}')" class="text-slate-400 hover:text-sky-600 transition-colors text-xs mr-2" title="Ιστορικό SMS">📨</button><button onclick="app.deleteGuest('${g.id}')" class="text-slate-400 hover:text-red-600 transition-colors text-xs">🗑️</button></td></tr>`;}).join('');
+  },enSMSHistory('${g.id}')" class="text-slate-400 hover:text-sky-600 transition-colors text-xs mr-2" title="Ιστορικό SMS">📨</button><button onclick="app.deleteGuest('${g.id}')" class="text-slate-400 hover:text-red-600 transition-colors text-xs">🗑️</button></td></tr>`;}).join('');
   },
   async checkInGuest(id){await this.db.from('guests').update({checked_in:true,checked_in_at:new Date().toISOString()}).eq('id',id);this.refreshCurrentEvent();this.showToast('Check-in επιτυχές!');},
   async updateRSVP(id,status,count){await this.db.from('guests').update({rsvp_status:status,rsvp_count:count||null}).eq('id',id);this.refreshCurrentEvent();},
