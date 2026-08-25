@@ -781,9 +781,6 @@ const app = {
     if(!name||!date)return;
     if(!this.user||!this.user.id){alert('Σφάλμα: Δεν είστε συνδεδεμένος. Ανανεώστε τη σελίδα.');return;}
     
-    // DEBUG: Log payload before sending
-    console.log('SAVE EVENT PAYLOAD:', JSON.stringify(payload, null, 2));
-    
     // FIX: Έλεγχος unique slug
     if(slug){
       const {data:existing}=await this.db.from('events').select('id').eq('custom_slug',slug).limit(1);
@@ -807,6 +804,7 @@ const app = {
     // Remove undefined values to avoid Supabase 400 errors
     Object.keys(payload).forEach(key=>{if(payload[key]===undefined)delete payload[key];});
     
+    // DEBUG: Log payload before sending
     console.log('SAVE EVENT PAYLOAD:', JSON.stringify(payload, null, 2));
     
     try{
