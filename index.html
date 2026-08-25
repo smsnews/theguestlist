@@ -779,6 +779,10 @@ const app = {
     const nouna=document.getElementById('event-nouna')?.value.trim()||'';
     
     if(!name||!date)return;
+    if(!this.user||!this.user.id){alert('Σφάλμα: Δεν είστε συνδεδεμένος. Ανανεώστε τη σελίδα.');return;}
+    
+    // DEBUG: Log payload before sending
+    console.log('SAVE EVENT PAYLOAD:', JSON.stringify(payload, null, 2));
     
     // FIX: Έλεγχος unique slug
     if(slug){
@@ -800,16 +804,26 @@ const app = {
       nounos_name:nounos,nouna_name:nouna
     };
     
-    if(id){
-      const {error}=await this.db.from('events').update(payload).eq('id',id);
-      if(error){this.showToast('Σφάλμα ενημέρωσης');return;}
-    }else{
-      const {error}=await this.db.from('events').insert([payload]);
-      if(error){this.showToast('Σφάλμα αποθήκευσης');return;}
+    // Remove undefined values to avoid Supabase 400 errors
+    Object.keys(payload).forEach(key=>{if(payload[key]===undefined)delete payload[key];});
+    
+    console.log('SAVE EVENT PAYLOAD:', JSON.stringify(payload, null, 2));
+    
+    try{
+      if(id){
+        const {error}=await this.db.from('events').update(payload).eq('id',id);
+        if(error)throw error;
+      }else{
+        const {error}=await this.db.from('events').insert([payload]);
+        if(error)throw error;
+      }
+      this.showToast(id?'Η εκδήλωση ενημερώθηκε!':'Η εκδήλωση δημιουργήθηκε!');
+      this.closeModal('modal-event');
+      this.loadEvents();
+    }catch(err){
+      console.error('SAVE EVENT ERROR:', err);
+      alert('Σφάλμα αποθήκευσης:\n' + (err.message || err) + '\n\nΈλεγξε το Console (F12) για λεπτομέρειες.');
     }
-    this.showToast(id?'Η εκδήλωση ενημερώθηκε!':'Η εκδήλωση δημιουργήθηκε!');
-    this.closeModal('modal-event');
-    this.loadEvents();
   },
   async openEvent(id){this.currentEvent=this.events.find(e=>e.id===id);if(!this.currentEvent)return;document.getElementById('detail-title').textContent=this.currentEvent.name;document.getElementById('detail-subtitle').textContent=`${this.formatDate(this.currentEvent.date)} • ${this.currentEvent.location||'Χωρίς τοποθεσία'}`;document.getElementById('print-title').textContent=this.currentEvent.name;document.getElementById('print-subtitle').textContent=`${this.formatDate(this.currentEvent.date)} • ${this.currentEvent.location||''}`;await this.refreshCurrentEvent();document.getElementById('modal-detail').classList.remove('hidden');document.getElementById('modal-detail').classList.add('flex');this.setTab('guests');},
   closeModal(id){const el=document.getElementById(id);if(el){el.classList.add('hidden');el.classList.remove('flex');}if(id==='modal-detail'){this.currentEvent=null;this.currentTab='guests';}},
