@@ -296,17 +296,41 @@ const attending=document.querySelector('input[name="rsvp-attending"]:checked')?.
 const count=parseInt(document.getElementById('rsvp-count').value)||1;
 const notes=document.getElementById('rsvp-notes').value.trim();
 if(!name||!attending){alert('Συμπληρώστε τα υποχρεωτικά πεδία');btn.disabled=false;btn.textContent='Υποβολή Απάντησης';return;}
+
 try{
 const token=guestData?guestData.rsvp_token:null;
+console.log('RSVP DEBUG: token=',token,'attending=',attending,'count=',count);
+
 if(token){
-const {data:funcData,error:funcErr}=await db.functions.invoke('rsvp',{body:{token,name,phone,email,attending,rsvp_count:count,dietary:notes}});
-if(funcErr||!funcData?.success){
-await db.from('guests').update({name,phone,email,rsvp_status:attending,rsvp_count:count,dietary_restrictions:notes}).eq('rsvp_token',token);
+  // Προσπάθεια #1: Edge Function
+  let updated=false;
+  try{
+    const {data:funcData,error:funcErr}=await db.functions.invoke('rsvp',{body:{token,name,phone,email,attending,rsvp_count:count,dietary:notes}});
+    console.log('RSVP Edge Function:',funcData,funcErr);
+    if(!funcErr&&funcData?.success)updated=true;
+  }catch(fnErr){console.log('Edge function failed:',fnErr);}
+  
+  // Προσπάθεια #2: Απευθείας update (αν το Edge Function απέτυχε)
+  if(!updated){
+    const updateData={name,phone,email,rsvp_status:attending,rsvp_count:count};
+    if(notes)updateData.dietary_restrictions=notes;
+    console.log('RSVP Direct update:',updateData);
+    const {error:upErr}=await db.from('guests').update(updateData).eq('rsvp_token',token);
+    if(upErr){
+      console.error('RSVP Update error:',upErr);
+      alert('Σφάλμα αποθήκευσης: '+upErr.message);
+      btn.disabled=false;
+      btn.textContent='Υποβολή Απάντησης';
+      return;
+    }
+    console.log('RSVP Direct update success');
+  }
 }
-}
+
 document.getElementById('rsvp-form').classList.add('hidden');
 document.getElementById('rsvp-success').classList.remove('hidden');
 }catch(err){
+console.error('RSVP Error:',err);
 alert('Σφάλμα: '+(err.message||'Δοκιμάστε ξανά'));
 btn.disabled=false;
 btn.textContent='Υποβολή Απάντησης';
