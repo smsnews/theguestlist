@@ -403,10 +403,19 @@
         <div id="rsvp-list" class="space-y-2"></div>
       </div>
 
-      <div id="panel-reception" class="hidden space-y-4">
-        <div class="bg-amber-50 rounded-xl p-4 border border-amber-200 mb-4"><p class="text-sm text-amber-800">💡 <strong>Ελληνικό Παράδοξο:</strong> Κάποιοι έρχονται στο μυστήριο αλλά ΟΧΙ στη δεξίωση. Εδώ διαχειρίζεστε το υποσύνολο της δεξίωσης.</p></div>
-        <div id="reception-list" class="space-y-2"></div>
-      </div>
+<div id="panel-reception" class="hidden space-y-4">
+  <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 no-print">
+    <div class="flex gap-2">
+      <button onclick="app.setReceptionFilter('all')" id="rec-filter-all" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white">Όλοι (Μυστήριο)</button>
+      <button onclick="app.setReceptionFilter('invited')" id="rec-filter-invited" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Προσκεκλημένοι Δεξίωσης</button>
+      <button onclick="app.setReceptionFilter('confirmed')" id="rec-filter-confirmed" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Επιβεβαιωμένοι Δεξίωσης</button>
+    </div>
+    <button onclick="app.printCateringList()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1">
+      🖨️ Εκτύπωση Catering / Maître
+    </button>
+  </div>
+  <div id="reception-list" class="space-y-2"></div>
+</div>
 
       <div id="panel-edit" class="hidden space-y-4">
         <div class="bg-blue-50 rounded-xl p-4 border border-blue-200 mb-4"><p class="text-sm text-blue-800">✏️ Επεξεργάστε τα στοιχεία της εκδήλωσης και του Event Website. Οι αλλαγές ενημερώνονται αμέσως.</p></div>
