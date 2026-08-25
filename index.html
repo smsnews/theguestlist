@@ -705,7 +705,31 @@ const app = {
   async updateEventDetails(e){e.preventDefault();if(!this.currentEvent)return;const payload={name:document.getElementById('edit-name').value.trim(),date:document.getElementById('edit-date').value,location:document.getElementById('edit-location').value.trim(),church_location:document.getElementById('edit-church').value.trim(),contact_name:document.getElementById('edit-contact-name').value.trim(),contact_phone:document.getElementById('edit-contact-phone').value.trim(),program:document.getElementById('edit-program').value.trim(),gift_iban:document.getElementById('edit-iban').value.trim(),spotify_playlist:document.getElementById('edit-spotify').value.trim(),custom_slug:document.getElementById('edit-slug').value.trim()||null};const {error}=await this.db.from('events').update(payload).eq('id',this.currentEvent.id);if(error){this.showToast('Σφάλμα ενημέρωσης');return;}this.showToast('✅ Αποθηκεύτηκε!');await this.loadEvents();this.currentEvent=this.events.find(e=>e.id===this.currentEvent.id);},
   previewEventWebsite(){if(!this.currentEvent)return;const slug=this.currentEvent.custom_slug||this.currentEvent.id;window.open(`event.html?id=${slug}`,'_blank');},
   showDeleteConfirm(){document.getElementById('modal-delete').classList.remove('hidden');document.getElementById('modal-delete').classList.add('flex');},
-  async confirmDeleteEvent(){if(!this.currentEvent)return;const id=this.currentEvent.id;await this.db.from('event_photos').delete().eq('event_id',id);await this.db.from('guests').delete().eq('event_id',id);await this.db.from('tables').delete().eq('event_id',id);await this.db.from('events').delete().eq('id',id);this.showToast('Η εκδήλωση διαγράφηκε');this.closeModal('modal-delete');this.closeModal('modal-detail');this.loadEvents();},
+  async confirmDeleteEvent(){
+    if(!this.currentEvent)return;
+    const id=this.currentEvent.id;
+    
+    // 1. Πάρε όλες τις φωτογραφίες για να διαγράψεις και από Storage
+    const { data: photos } = await this.db.from('event_photos').select('storage_path').eq('event_id', id);
+    if (photos && photos.length > 0) {
+      const paths = photos.map(p => p.storage_path).filter(Boolean);
+      if (paths.length > 0) {
+        const { error: storageErr } = await this.db.storage.from('event-photos').remove(paths);
+        if (storageErr) console.warn('Storage delete warning:', storageErr);
+      }
+    }
+    
+    // 2. Διέγραψε από τα tables
+    await this.db.from('event_photos').delete().eq('event_id',id);
+    await this.db.from('guests').delete().eq('event_id',id);
+    await this.db.from('tables').delete().eq('event_id',id);
+    await this.db.from('events').delete().eq('id',id);
+    
+    this.showToast('Η εκδήλωση διαγράφηκε');
+    this.closeModal('modal-delete');
+    this.closeModal('modal-detail');
+    this.loadEvents();
+  },
   printEvent(){window.print();},
   exportEventCSV(){
     if(!this.currentEvent)return;
@@ -886,7 +910,7 @@ const app = {
     const gallery = document.getElementById('cover-gallery');
     gallery.innerHTML = this.photos.map((p, i) => `
       <div onclick="app.setCover(${p.id})" class="aspect-square rounded-xl overflow-hidden cursor-pointer border-2 ${p.is_cover ? 'border-amber-500' : 'border-slate-200'} hover:border-amber-400 transition-all">
-        <img src="${p.url}" class="w-full h-full object-cover">
+        <img src="${p.public_url}" class="w-full h-full object-cover">
       </div>
     `).join('');
     document.getElementById('modal-cover').classList.remove('hidden');
@@ -904,9 +928,25 @@ const app = {
   async deletePhoto(id) {
     if (!confirm('Διαγραφή φωτογραφίας;')) return;
     const photo = this.photos.find(p => p.id === id);
-    if (photo?.storage_path) await this.db.storage.from('event-photos').remove([photo.storage_path]);
-    await this.db.from('event_photos').delete().eq('id', id);
-    this.refreshPhotos();
+    try {
+      // 1. Διέγραψε από το table πρώτα
+      const { error: dbError } = await this.db.from('event_photos').delete().eq('id', id);
+      if (dbError) {
+        console.error('DB delete error:', dbError);
+        alert('Σφάλμα διαγραφής από βάση: ' + dbError.message);
+        return;
+      }
+      // 2. Μετά διέγραψε από το storage
+      if (photo?.storage_path) {
+        const { error: storageError } = await this.db.storage.from('event-photos').remove([photo.storage_path]);
+        if (storageError) console.warn('Storage delete warning:', storageError);
+      }
+      this.showToast('Η φωτογραφία διαγράφηκε!');
+      this.refreshPhotos();
+    } catch (err) {
+      console.error('Delete photo error:', err);
+      alert('Σφάλμα διαγραφής: ' + err.message);
+    }
   },
   openLightbox(index) {
     this.photoIndex = index;
