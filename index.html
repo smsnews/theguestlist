@@ -537,6 +537,9 @@
         <p class="text-slate-400 text-sm mt-1">JPG, PNG, WebP — έως 5MB</p>
         <input type="file" id="photo-input" multiple accept="image/*" class="hidden" onchange="app.handlePhotoUpload(event)">
       </div>
+      <div id="upload-limit-warning" class="hidden mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-center">
+        <p class="text-amber-700 text-sm font-medium">⚠️ Free plan: Μέγιστο 5 φωτογραφίες ανά event</p>
+      </div>
       <div id="upload-progress" class="hidden mt-4">
         <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-indigo-500 to-pink-500 rounded-full transition-all" id="upload-progress-bar" style="width:0%"></div></div>
         <p class="text-sm text-slate-500 text-center mt-2" id="upload-status">Ανέβασμα...</p>
@@ -659,8 +662,30 @@ const app = {
   async confirmAddCredits(e){e.preventDefault();const userId=document.getElementById('add-credits-user').dataset.userId;const amount=parseInt(document.getElementById('add-credits-amount').value);const reason=document.getElementById('add-credits-reason').value;const {error}=await this.db.rpc('admin_add_credits',{target_user_id:userId,credit_amount:amount,transaction_reason:reason});if(error)alert(error.message);else{this.showToast(`Προστέθηκαν ${amount} credits!`);this.closeModal('modal-add-credits');this.loadAdminData();}},
 
   async showApp(){document.getElementById('modal-auth').classList.add('hidden');document.getElementById('modal-auth').classList.remove('flex');document.getElementById('app').classList.remove('hidden');await this.loadEvents();},
-  async loadEvents(){const {data,error}=await this.db.from('events').select('*').eq('user_id',this.user.id).order('date',{ascending:true});if(error){this.showToast('Σφάλμα φόρτωσης');return;}this.events=data||[];this.updateStats();this.renderEvents();},
-  updateStats(){this.db.auth.getUser().then(({data})=>{if(data?.user){const meta=data.user.user_metadata||{};document.getElementById('user-plan').textContent=meta.plan==='premium'?'⭐ Premium':'Free';}});document.getElementById('stat-events').textContent=this.events.length;let total=0,confirmed=0,pending=0;this.guests.forEach(g=>{total+=g.party_size||1;if(g.rsvp_status==='yes')confirmed+=g.rsvp_count||g.party_size||1;else if(!g.rsvp_status||g.rsvp_status==='pending')pending+=g.party_size||1;});document.getElementById('stat-total').textContent=total;document.getElementById('stat-confirmed').textContent=confirmed;document.getElementById('stat-pending').textContent=pending;},
+
+  // FIX #1: Φορτώνουμε ΟΛΟΥΣ τους καλεσμένους του user για σωστά dashboard stats
+  async loadEvents(){
+    const {data,error}=await this.db.from('events').select('*').eq('user_id',this.user.id).order('date',{ascending:true});
+    if(error){this.showToast('Σφάλμα φόρτωσης');return;}
+    this.events=data||[];
+
+    // FIX: Φόρτωση όλων των καλεσμένων του user για σωστά stats
+    const {data:allGuests,error:gErr}=await this.db.from('guests').select('*').eq('user_id',this.user.id);
+    if(!gErr&&allGuests){this.guests=allGuests;}
+
+    this.updateStats();
+    this.renderEvents();
+  },
+
+  updateStats(){
+    this.db.auth.getUser().then(({data})=>{if(data?.user){const meta=data.user.user_metadata||{};document.getElementById('user-plan').textContent=meta.plan==='premium'?'⭐ Premium':'Free';}});
+    document.getElementById('stat-events').textContent=this.events.length;
+    let total=0,confirmed=0,pending=0;
+    this.guests.forEach(g=>{total+=g.party_size||1;if(g.rsvp_status==='yes')confirmed+=g.rsvp_count||g.party_size||1;else if(!g.rsvp_status||g.rsvp_status==='pending')pending+=g.party_size||1;});
+    document.getElementById('stat-total').textContent=total;
+    document.getElementById('stat-confirmed').textContent=confirmed;
+    document.getElementById('stat-pending').textContent=pending;
+  },
   renderEvents(){const c=document.getElementById('events-container');if(!this.events.length){c.innerHTML=`<div class="col-span-full text-center py-12 md:py-16"><div class="text-4xl md:text-6xl mb-4">📅</div><h3 class="text-lg md:text-xl font-bold text-slate-900 mb-2">Καμία εκδήλωση ακόμα</h3><p class="text-slate-500 mb-6 text-sm md:text-base">Δημιούργησε την πρώτη σου εκδήλωση!</p><button onclick="app.createEvent()" class="bg-rose-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 text-sm md:text-base touch-btn">Νέα Εκδήλωση</button></div>`;return;}
     c.innerHTML=this.events.map(e=>{const typeIcon=e.type==='wedding'?'💒':e.type==='baptism'?'🕊️':'🎉';const gradients={wedding:'from-rose-100 to-pink-100',baptism:'from-blue-100 to-sky-100',party:'from-purple-100 to-fuchsia-100',corporate:'from-slate-100 to-gray-100'};const grad=gradients[e.type]||gradients.party;return `<div onclick="app.openEvent('${e.id}')" class="bg-gradient-to-br ${grad} rounded-2xl shadow-sm border border-slate-100 overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 group mobile-card"><div class="p-4 md:p-6"><div class="flex items-center justify-between mb-3"><span class="text-2xl md:text-3xl bg-white/50 backdrop-blur-sm rounded-xl px-2 py-1">${typeIcon}</span><span class="text-xs font-bold bg-white/70 text-slate-600 px-3 py-1.5 rounded-full">${this.formatDate(e.date)}</span></div><h3 class="text-lg md:text-xl font-bold mb-1 text-slate-900">${this.escapeHTML(e.name)}</h3><p class="text-xs md:text-sm text-slate-500">${this.escapeHTML(e.location||'Χωρίς τοποθεσία')}</p><div class="flex gap-3 mt-3 md:mt-4 text-slate-500 text-xs md:text-sm font-medium"><span>👥 ${e.guest_count||0}</span><span>✅ ${e.confirmed_count||0}</span><span>⏳ ${e.pending_count||0}</span></div></div></div>`;}).join('');
   },
@@ -769,11 +794,33 @@ const app = {
     `).join('');
   },
   openUploadModal() {
+    // FIX #2: Έλεγχος ορίου φωτογραφιών για free users
+    const isPremium = this.currentEvent?.plan === 'premium';
+    const limit = isPremium ? 100 : 5;
+    const warning = document.getElementById('upload-limit-warning');
+    if (!isPremium && this.photos.length >= limit) {
+      alert('Έχετε φτάσει το όριο των 5 φωτογραφιών για τον Free λογαριασμό. Αναβαθμίστε σε Premium για απεριόριστες φωτογραφίες!');
+      return;
+    }
+    if (!isPremium) {
+      warning.classList.remove('hidden');
+    } else {
+      warning.classList.add('hidden');
+    }
     document.getElementById('modal-upload').classList.remove('hidden');
     document.getElementById('modal-upload').classList.add('flex');
   },
   async handlePhotoUpload(e) {
     const files = Array.from(e.target.files); if (!files.length) return;
+
+    // FIX #3: Έλεγχος ορίου πριν το upload
+    const isPremium = this.currentEvent?.plan === 'premium';
+    const limit = isPremium ? 100 : 5;
+    if (!isPremium && this.photos.length + files.length > limit) {
+      alert(`Μπορείτε να ανεβάσετε ακόμα ${limit - this.photos.length} φωτογραφίες στον Free λογαριασμό.`);
+      return;
+    }
+
     const progressBar = document.getElementById('upload-progress-bar');
     const progressDiv = document.getElementById('upload-progress');
     const status = document.getElementById('upload-status');
