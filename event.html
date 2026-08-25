@@ -22,6 +22,7 @@ input,select,textarea{font-size:16px}
 .timeline-item::before{content:'';position:absolute;left:-6px;top:4px;width:10px;height:10px;border-radius:50%;background:#e11d48}
 </style>
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="gradient-hero min-h-screen" id="body">
 <div id="app" class="max-w-2xl mx-auto px-4 py-8 md:py-16 animate-in">
@@ -58,7 +59,12 @@ input,select,textarea{font-size:16px}
     </div>
   </div>
   <div id="baptism-families" class="hidden space-y-3">
-    <h3 class="text-lg font-bold text-slate-900 text-center">🕊️ Νονοί</h3>
+    <h3 class="text-lg font-bold text-slate-900 text-center">🕊️ Οικογένεια</h3>
+    <div class="grid grid-cols-2 gap-3 text-center">
+      <div class="bg-rose-50 rounded-xl p-3"><p class="text-xs text-rose-600 font-bold uppercase">Ο Πατέρας</p><p id="baptism-groom-family" class="font-bold text-slate-900"></p></div>
+      <div class="bg-pink-50 rounded-xl p-3"><p class="text-xs text-pink-600 font-bold uppercase">Η Μητέρα</p><p id="baptism-bride-family" class="font-bold text-slate-900"></p></div>
+    </div>
+    <h3 class="text-lg font-bold text-slate-900 text-center mt-2">🕊️ Νονοί</h3>
     <div class="grid grid-cols-2 gap-3 text-center">
       <div class="bg-blue-50 rounded-xl p-3"><p class="text-xs text-blue-600 font-bold uppercase">Νονός</p><p id="nounos-name" class="font-bold text-slate-900"></p></div>
       <div class="bg-pink-50 rounded-xl p-3"><p class="text-xs text-pink-600 font-bold uppercase">Νονά</p><p id="nouna-name" class="font-bold text-slate-900"></p></div>
@@ -189,9 +195,17 @@ if(eventData.type==='wedding'&&(eventData.groom_family_name||eventData.bride_fam
   else document.getElementById('koubaros-name').parentElement.classList.add('hidden');
   if(eventData.koubara_name)document.getElementById('koubara-name').textContent=eventData.koubara_name;
   else document.getElementById('koubara-name').parentElement.classList.add('hidden');
-}else if(eventData.type==='baptism'&&(eventData.nounos_name||eventData.nouna_name)){
+}else if(eventData.type==='baptism'&&(eventData.nounos_name||eventData.nouna_name||eventData.groom_family_name||eventData.bride_family_name)){
   familiesSection.classList.remove('hidden');
   document.getElementById('baptism-families').classList.remove('hidden');
+  if(eventData.groom_family_name){
+    document.getElementById('baptism-groom-family').textContent=eventData.groom_family_name;
+    document.getElementById('baptism-groom-family').parentElement.classList.remove('hidden');
+  }else document.getElementById('baptism-groom-family').parentElement.classList.add('hidden');
+  if(eventData.bride_family_name){
+    document.getElementById('baptism-bride-family').textContent=eventData.bride_family_name;
+    document.getElementById('baptism-bride-family').parentElement.classList.remove('hidden');
+  }else document.getElementById('baptism-bride-family').parentElement.classList.add('hidden');
   if(eventData.nounos_name)document.getElementById('nounos-name').textContent=eventData.nounos_name;
   else document.getElementById('nounos-name').parentElement.classList.add('hidden');
   if(eventData.nouna_name)document.getElementById('nouna-name').textContent=eventData.nouna_name;
