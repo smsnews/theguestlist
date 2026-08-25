@@ -312,18 +312,33 @@ if(token){
   
   // Προσπάθεια #2: Απευθείας update (αν το Edge Function απέτυχε)
   if(!updated){
-    const updateData={name,phone,email,rsvp_status:attending,rsvp_count:count};
+    // Βασικά πεδία που σίγουρα υπάρχουν
+    const updateData={name,phone,email,rsvp_status:attending};
+    // Προαιρετικά πεδία - μπορεί να μην υπάρχουν στη βάση ακόμα
+    if(count)updateData.rsvp_count=count;
     if(notes)updateData.dietary_restrictions=notes;
+    
     console.log('RSVP Direct update:',updateData);
-    const {error:upErr}=await db.from('guests').update(updateData).eq('rsvp_token',token);
+    const {data:upData,error:upErr}=await db.from('guests').update(updateData).eq('rsvp_token',token).select();
     if(upErr){
       console.error('RSVP Update error:',upErr);
-      alert('Σφάλμα αποθήκευσης: '+upErr.message);
-      btn.disabled=false;
-      btn.textContent='Υποβολή Απάντησης';
-      return;
+      // Προσπάθεια #3: Μόνο τα βασικά πεδία (χωρίς rsvp_count/dietary)
+      if(upErr.message?.includes('rsvp_count')||upErr.message?.includes('dietary')||upErr.code==='42703'){
+        console.log('RSVP Retry with basic fields only');
+        const basicData={name,phone,email,rsvp_status:attending};
+        const {data:basicUpData,error:basicErr}=await db.from('guests').update(basicData).eq('rsvp_token',token).select();
+        if(basicErr){
+          alert('Σφάλμα αποθήκευσης: '+basicErr.message);
+          btn.disabled=false;btn.textContent='Υποβολή Απάντησης';return;
+        }
+        console.log('RSVP Basic update success:',basicUpData);
+      }else{
+        alert('Σφάλμα αποθήκευσης: '+upErr.message);
+        btn.disabled=false;btn.textContent='Υποβολή Απάντησης';return;
+      }
+    }else{
+      console.log('RSVP Direct update success:',upData);
     }
-    console.log('RSVP Direct update success');
   }
 }
 
