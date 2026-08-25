@@ -266,9 +266,30 @@
       <div><label class="block text-sm font-semibold text-slate-700 mb-2">Όνομα Εκδήλωσης</label><input type="text" id="event-name" required placeholder="π.χ. Γάμος Μαρίας & Γιώργου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
       <div class="grid grid-cols-2 gap-3">
         <div><label class="block text-sm font-semibold text-slate-700 mb-2">Ημερομηνία</label><input type="date" id="event-date" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
-        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Τοποθεσία Δεξίωσης</label><input type="text" id="event-location" placeholder="Κτήμα/Αίθουσα" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Ώρα</label><input type="time" id="event-time" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
       </div>
-      <div id="church-field"><label class="block text-sm font-semibold text-slate-700 mb-2">Τοποθεσία Μυστηρίου (Ναός)</label><input type="text" id="event-church" placeholder="Ι.Ν. Αγίου Νικολάου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Τοποθεσία Δεξίωσης</label><input type="text" id="event-location" placeholder="Κτήμα/Αίθουσα" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
+        <div id="church-field"><label class="block text-sm font-semibold text-slate-700 mb-2">Τοποθεσία Μυστηρίου (Ναός)</label><input type="text" id="event-church" placeholder="Ι.Ν. Αγίου Νικολάου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
+      </div>
+      <!-- WEDDING FIELDS -->
+      <div id="wedding-fields" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="text-xs font-semibold text-slate-700">Οικογένεια Γαμπρού</label><input type="text" id="event-groom-family" placeholder="π.χ. Οικογένεια Παπαδόπουλου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+          <div><label class="text-xs font-semibold text-slate-700">Οικογένεια Νύφης</label><input type="text" id="event-bride-family" placeholder="π.χ. Οικογένεια Ανδρέου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="text-xs font-semibold text-slate-700">Κουμπάρος</label><input type="text" id="event-koubaros" placeholder="Όνομα κουμπάρου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+          <div><label class="text-xs font-semibold text-slate-700">Κουμπάρα</label><input type="text" id="event-koubara" placeholder="Όνομα κουμπάρας" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+        </div>
+      </div>
+      <!-- BAPTISM FIELDS -->
+      <div id="baptism-fields" class="hidden space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="text-xs font-semibold text-slate-700">Νονός</label><input type="text" id="event-nounos" placeholder="Όνομα νονού" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+          <div><label class="text-xs font-semibold text-slate-700">Νονά</label><input type="text" id="event-nouna" placeholder="Όνομα νονάς" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+        </div>
+      </div>
       <div class="grid grid-cols-2 gap-3">
         <div><label class="block text-sm font-semibold text-slate-700 mb-2">Υπεύθυνος Επικοινωνίας</label><input type="text" id="event-contact-name" placeholder="Όνομα" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all"></div>
         <div><label class="block text-sm font-semibold text-slate-700 mb-2">Τηλέφωνο Επικοινωνίας</label><input type="tel" id="event-contact-phone" placeholder="69xxxxxxxx" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all"></div>
@@ -278,6 +299,7 @@
         <div class="space-y-3">
           <div><label class="text-xs text-slate-500">Πρόγραμμα Ημέρας (μία γραμμή ανά δραστηριότητα)</label><textarea id="event-program" rows="3" placeholder="17:00 – Τελετή&#10;18:00 – Συγχαρητήρια&#10;20:45 – Πρώτος Χορός" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm resize-none"></textarea></div>
           <div><label class="text-xs text-slate-500">IBAN Λίστας Δώρων</label><input type="text" id="event-iban" placeholder="GRxx xxxx xxxx xxxx xxxx xxxx xxx" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+          <div class="flex items-center gap-2 mt-2"><input type="checkbox" id="event-show-iban" class="w-4 h-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500" checked><label class="text-xs text-slate-600">Εμφάνιση IBAN στο Event Website</label></div>
           <div><label class="text-xs text-slate-500">Spotify Playlist ID</label><input type="text" id="event-spotify" placeholder="π.χ. 37i9dQZF1DX..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
           <div><label class="text-xs text-slate-500">Custom URL Slug (π.χ. giorgos-kai-maria)</label><input type="text" id="event-slug" placeholder="giorgos-kai-maria" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
         </div>
@@ -691,18 +713,158 @@ const app = {
     c.innerHTML=this.events.map(e=>{const typeIcon=e.type==='wedding'?'💒':e.type==='baptism'?'🕊️':'🎉';const gradients={wedding:'from-rose-100 to-pink-100',baptism:'from-blue-100 to-sky-100',party:'from-purple-100 to-fuchsia-100',corporate:'from-slate-100 to-gray-100'};const grad=gradients[e.type]||gradients.party;return `<div onclick="app.openEvent('${e.id}')" class="bg-gradient-to-br ${grad} rounded-2xl shadow-sm border border-slate-100 overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 group mobile-card"><div class="p-4 md:p-6"><div class="flex items-center justify-between mb-3"><span class="text-2xl md:text-3xl bg-white/50 backdrop-blur-sm rounded-xl px-2 py-1">${typeIcon}</span><span class="text-xs font-bold bg-white/70 text-slate-600 px-3 py-1.5 rounded-full">${this.formatDate(e.date)}</span></div><h3 class="text-lg md:text-xl font-bold mb-1 text-slate-900">${this.escapeHTML(e.name)}</h3><p class="text-xs md:text-sm text-slate-500">${this.escapeHTML(e.location||'Χωρίς τοποθεσία')}</p><div class="flex gap-3 mt-3 md:mt-4 text-slate-500 text-xs md:text-sm font-medium"><span>👥 ${e.guest_count||0}</span><span>✅ ${e.confirmed_count||0}</span><span>⏳ ${e.pending_count||0}</span></div></div></div>`;}).join('');
   },
   createEvent(){document.getElementById('modal-event').classList.remove('hidden');document.getElementById('modal-event').classList.add('flex');document.getElementById('event-modal-title').textContent='Νέα Εκδήλωση';document.getElementById('event-id').value='';document.getElementById('event-submit-btn').textContent='Δημιουργία';document.querySelectorAll('.event-type-btn').forEach(b=>{b.classList.remove('border-rose-500','border-blue-500','border-purple-500','bg-rose-50','bg-blue-50','bg-purple-50');});document.getElementById('event-name').value='';document.getElementById('event-date').value='';document.getElementById('event-location').value='';document.getElementById('event-church').value='';document.getElementById('event-contact-name').value='';document.getElementById('event-contact-phone').value='';document.getElementById('event-program').value='';document.getElementById('event-iban').value='';document.getElementById('event-spotify').value='';document.getElementById('event-slug').value='';},
-  selectEventType(type){document.querySelectorAll('.event-type-btn').forEach(b=>{b.classList.remove('border-rose-500','border-blue-500','border-purple-500','bg-rose-50','bg-blue-50','bg-purple-50');if(b.dataset.type===type){const c=type==='wedding'?'rose':type==='baptism'?'blue':'purple';b.classList.add(`border-${c}-500`,`bg-${c}-50`);}});document.getElementById('event-type-selected').value=type;const churchField=document.getElementById('church-field');if(type==='party'||type==='corporate')churchField.classList.add('hidden');else churchField.classList.remove('hidden');},
-  async saveEvent(e){e.preventDefault();const id=document.getElementById('event-id').value;const type=document.getElementById('event-type-selected').value;const name=document.getElementById('event-name').value.trim();const date=document.getElementById('event-date').value;const location=document.getElementById('event-location').value.trim();const church=document.getElementById('event-church').value.trim();const contactName=document.getElementById('event-contact-name').value.trim();const contactPhone=document.getElementById('event-contact-phone').value.trim();const program=document.getElementById('event-program').value.trim();const iban=document.getElementById('event-iban').value.trim();const spotify=document.getElementById('event-spotify').value.trim();const slug=document.getElementById('event-slug').value.trim();if(!name||!date)return;
-    const payload={user_id:this.user.id,type,name,date,location,church_location:church,contact_name:contactName,contact_phone:contactPhone,program,gift_iban:iban,spotify_playlist:spotify,custom_slug:slug||null};
-    if(id){const {error}=await this.db.from('events').update(payload).eq('id',id);if(error){this.showToast('Σφάλμα ενημέρωσης');return;}}
-    else{const {error}=await this.db.from('events').insert([payload]);if(error){this.showToast('Σφάλμα αποθήκευσης');return;}}
-    this.showToast(id?'Η εκδήλωση ενημερώθηκε!':'Η εκδήλωση δημιουργήθηκε!');this.closeModal('modal-event');this.loadEvents();
+  selectEventType(type){
+    document.querySelectorAll('.event-type-btn').forEach(b=>{b.classList.remove('border-rose-500','border-blue-500','border-purple-500','bg-rose-50','bg-blue-50','bg-purple-50');if(b.dataset.type===type){const c=type==='wedding'?'rose':type==='baptism'?'blue':'purple';b.classList.add(`border-${c}-500`,`bg-${c}-50`);}});
+    document.getElementById('event-type-selected').value=type;
+    const churchField=document.getElementById('church-field');
+    const weddingFields=document.getElementById('wedding-fields');
+    const baptismFields=document.getElementById('baptism-fields');
+    
+    if(type==='party'||type==='corporate'){
+      churchField.classList.add('hidden');
+      weddingFields.classList.add('hidden');
+      baptismFields.classList.add('hidden');
+    }else if(type==='baptism'){
+      churchField.classList.remove('hidden');
+      weddingFields.classList.add('hidden');
+      baptismFields.classList.remove('hidden');
+    }else{
+      // wedding
+      churchField.classList.remove('hidden');
+      weddingFields.classList.remove('hidden');
+      baptismFields.classList.add('hidden');
+    }
+  },
+  async saveEvent(e){
+    e.preventDefault();
+    const id=document.getElementById('event-id').value;
+    const type=document.getElementById('event-type-selected').value;
+    const name=document.getElementById('event-name').value.trim();
+    const date=document.getElementById('event-date').value;
+    const eventTime=document.getElementById('event-time').value;
+    const location=document.getElementById('event-location').value.trim();
+    const church=document.getElementById('event-church').value.trim();
+    const contactName=document.getElementById('event-contact-name').value.trim();
+    const contactPhone=document.getElementById('event-contact-phone').value.trim();
+    const program=document.getElementById('event-program').value.trim();
+    const iban=document.getElementById('event-iban').value.trim();
+    const showIban=document.getElementById('event-show-iban').checked;
+    const spotify=document.getElementById('event-spotify').value.trim();
+    const slug=document.getElementById('event-slug').value.trim();
+    
+    // Wedding fields
+    const groomFamily=document.getElementById('event-groom-family')?.value.trim()||'';
+    const brideFamily=document.getElementById('event-bride-family')?.value.trim()||'';
+    const koubaros=document.getElementById('event-koubaros')?.value.trim()||'';
+    const koubara=document.getElementById('event-koubara')?.value.trim()||'';
+    
+    // Baptism fields
+    const nounos=document.getElementById('event-nounos')?.value.trim()||'';
+    const nouna=document.getElementById('event-nouna')?.value.trim()||'';
+    
+    if(!name||!date)return;
+    
+    // FIX: Έλεγχος unique slug
+    if(slug){
+      const {data:existing}=await this.db.from('events').select('id').eq('custom_slug',slug).limit(1);
+      if(existing&&existing.length>0&&existing[0].id!==id){
+        alert('Αυτό το Custom URL χρησιμοποιείται ήδη από άλλη εκδήλωση. Επίλεξε άλλο.');
+        return;
+      }
+    }
+    
+    const payload={
+      user_id:this.user.id,type,name,date,event_time:eventTime||null,
+      location,church_location:church,
+      contact_name:contactName,contact_phone:contactPhone,
+      program,gift_iban:iban,show_iban:showIban,
+      spotify_playlist:spotify,custom_slug:slug||null,
+      groom_family_name:groomFamily,bride_family_name:brideFamily,
+      koubaros_name:koubaros,koubara_name:koubara,
+      nounos_name:nounos,nouna_name:nouna
+    };
+    
+    if(id){
+      const {error}=await this.db.from('events').update(payload).eq('id',id);
+      if(error){this.showToast('Σφάλμα ενημέρωσης');return;}
+    }else{
+      const {error}=await this.db.from('events').insert([payload]);
+      if(error){this.showToast('Σφάλμα αποθήκευσης');return;}
+    }
+    this.showToast(id?'Η εκδήλωση ενημερώθηκε!':'Η εκδήλωση δημιουργήθηκε!');
+    this.closeModal('modal-event');
+    this.loadEvents();
   },
   async openEvent(id){this.currentEvent=this.events.find(e=>e.id===id);if(!this.currentEvent)return;document.getElementById('detail-title').textContent=this.currentEvent.name;document.getElementById('detail-subtitle').textContent=`${this.formatDate(this.currentEvent.date)} • ${this.currentEvent.location||'Χωρίς τοποθεσία'}`;document.getElementById('print-title').textContent=this.currentEvent.name;document.getElementById('print-subtitle').textContent=`${this.formatDate(this.currentEvent.date)} • ${this.currentEvent.location||''}`;await this.refreshCurrentEvent();document.getElementById('modal-detail').classList.remove('hidden');document.getElementById('modal-detail').classList.add('flex');this.setTab('guests');},
   closeModal(id){const el=document.getElementById(id);if(el){el.classList.add('hidden');el.classList.remove('flex');}if(id==='modal-detail'){this.currentEvent=null;this.currentTab='guests';}},
   setTab(tab){this.currentTab=tab;['guests','tables','rsvp','reception','edit','photos'].forEach(t=>{const btn=document.getElementById('tab-'+t),panel=document.getElementById('panel-'+t);if(t===tab){btn.classList.remove('bg-white','border','border-slate-200','text-slate-600');btn.classList.add('bg-slate-900','text-white','shadow-md');panel.classList.remove('hidden');}else{btn.classList.add('bg-white','border','border-slate-200','text-slate-600');btn.classList.remove('bg-slate-900','text-white','shadow-md');panel.classList.add('hidden');}});if(tab==='edit')this.loadEditForm();},
-  loadEditForm(){if(!this.currentEvent)return;document.getElementById('edit-name').value=this.currentEvent.name;document.getElementById('edit-date').value=this.currentEvent.date;document.getElementById('edit-location').value=this.currentEvent.location||'';document.getElementById('edit-church').value=this.currentEvent.church_location||'';document.getElementById('edit-contact-name').value=this.currentEvent.contact_name||'';document.getElementById('edit-contact-phone').value=this.currentEvent.contact_phone||'';document.getElementById('edit-program').value=this.currentEvent.program||'';document.getElementById('edit-iban').value=this.currentEvent.gift_iban||'';document.getElementById('edit-spotify').value=this.currentEvent.spotify_playlist||'';document.getElementById('edit-slug').value=this.currentEvent.custom_slug||'';const cw=document.getElementById('edit-church-wrap');if(this.currentEvent.type==='party')cw.classList.add('hidden');else cw.classList.remove('hidden');},
-  async updateEventDetails(e){e.preventDefault();if(!this.currentEvent)return;const payload={name:document.getElementById('edit-name').value.trim(),date:document.getElementById('edit-date').value,location:document.getElementById('edit-location').value.trim(),church_location:document.getElementById('edit-church').value.trim(),contact_name:document.getElementById('edit-contact-name').value.trim(),contact_phone:document.getElementById('edit-contact-phone').value.trim(),program:document.getElementById('edit-program').value.trim(),gift_iban:document.getElementById('edit-iban').value.trim(),spotify_playlist:document.getElementById('edit-spotify').value.trim(),custom_slug:document.getElementById('edit-slug').value.trim()||null};const {error}=await this.db.from('events').update(payload).eq('id',this.currentEvent.id);if(error){this.showToast('Σφάλμα ενημέρωσης');return;}this.showToast('✅ Αποθηκεύτηκε!');await this.loadEvents();this.currentEvent=this.events.find(e=>e.id===this.currentEvent.id);},
+  loadEditForm(){
+    if(!this.currentEvent)return;
+    document.getElementById('edit-name').value=this.currentEvent.name;
+    document.getElementById('edit-date').value=this.currentEvent.date;
+    document.getElementById('edit-location').value=this.currentEvent.location||'';
+    document.getElementById('edit-church').value=this.currentEvent.church_location||'';
+    document.getElementById('edit-contact-name').value=this.currentEvent.contact_name||'';
+    document.getElementById('edit-contact-phone').value=this.currentEvent.contact_phone||'';
+    document.getElementById('edit-program').value=this.currentEvent.program||'';
+    document.getElementById('edit-iban').value=this.currentEvent.gift_iban||'';
+    document.getElementById('edit-spotify').value=this.currentEvent.spotify_playlist||'';
+    document.getElementById('edit-slug').value=this.currentEvent.custom_slug||'';
+    
+    // Πρόσθεσε hidden inputs αν δεν υπάρχουν
+    this.ensureEditField('edit-time','time',this.currentEvent.event_time||'');
+    this.ensureEditField('edit-groom-family','text',this.currentEvent.groom_family_name||'');
+    this.ensureEditField('edit-bride-family','text',this.currentEvent.bride_family_name||'');
+    this.ensureEditField('edit-koubaros','text',this.currentEvent.koubaros_name||'');
+    this.ensureEditField('edit-koubara','text',this.currentEvent.koubara_name||'');
+    this.ensureEditField('edit-nounos','text',this.currentEvent.nounos_name||'');
+    this.ensureEditField('edit-nouna','text',this.currentEvent.nouna_name||'');
+    this.ensureEditField('edit-show-iban','checkbox',this.currentEvent.show_iban!==false);
+    
+    const cw=document.getElementById('edit-church-wrap');
+    if(this.currentEvent.type==='party')cw.classList.add('hidden');else cw.classList.remove('hidden');
+  },
+  ensureEditField(id,type,value){
+    let el=document.getElementById(id);
+    if(!el){
+      // Αν δεν υπάρχει το input, το δημιουργούμε δυναμικά
+      const container=document.getElementById('panel-edit').querySelector('form');
+      const div=document.createElement('div');
+      div.innerHTML=`<label class="text-xs font-semibold text-slate-700">${id.replace('edit-','')}</label><input type="${type}" id="${id}" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm">`;
+      container.insertBefore(div,container.querySelector('.flex.gap-3'));
+      el=document.getElementById(id);
+    }
+    if(type==='checkbox')el.checked=!!value;else el.value=value||'';
+  },
+  async updateEventDetails(e){
+    e.preventDefault();
+    if(!this.currentEvent)return;
+    const payload={
+      name:document.getElementById('edit-name').value.trim(),
+      date:document.getElementById('edit-date').value,
+      location:document.getElementById('edit-location').value.trim(),
+      church_location:document.getElementById('edit-church').value.trim(),
+      contact_name:document.getElementById('edit-contact-name').value.trim(),
+      contact_phone:document.getElementById('edit-contact-phone').value.trim(),
+      program:document.getElementById('edit-program').value.trim(),
+      gift_iban:document.getElementById('edit-iban').value.trim(),
+      spotify_playlist:document.getElementById('edit-spotify').value.trim(),
+      custom_slug:document.getElementById('edit-slug').value.trim()||null,
+      event_time:document.getElementById('edit-time')?.value||null,
+      groom_family_name:document.getElementById('edit-groom-family')?.value.trim()||'',
+      bride_family_name:document.getElementById('edit-bride-family')?.value.trim()||'',
+      koubaros_name:document.getElementById('edit-koubaros')?.value.trim()||'',
+      koubara_name:document.getElementById('edit-koubara')?.value.trim()||'',
+      nounos_name:document.getElementById('edit-nounos')?.value.trim()||'',
+      nouna_name:document.getElementById('edit-nouna')?.value.trim()||'',
+      show_iban:document.getElementById('edit-show-iban')?.checked!==false
+    };
+    const {error}=await this.db.from('events').update(payload).eq('id',this.currentEvent.id);
+    if(error){this.showToast('Σφάλμα ενημέρωσης');return;}
+    this.showToast('✅ Αποθηκεύτηκε!');
+    await this.loadEvents();
+    this.currentEvent=this.events.find(e=>e.id===this.currentEvent.id);
+  },
   previewEventWebsite(){if(!this.currentEvent)return;const slug=this.currentEvent.custom_slug||this.currentEvent.id;window.open(`event.html?id=${slug}`,'_blank');},
   showDeleteConfirm(){document.getElementById('modal-delete').classList.remove('hidden');document.getElementById('modal-delete').classList.add('flex');},
   async confirmDeleteEvent(){
@@ -744,7 +906,7 @@ const app = {
   },  
   async saveGuest(e){e.preventDefault();if(!this.currentEvent)return;const name=document.getElementById('g-name').value.trim();const partySize=parseInt(document.getElementById('g-party').value)||1;const phone=document.getElementById('g-phone').value.trim();const email=document.getElementById('g-email').value.trim();const side=document.getElementById('g-side').value;const category=document.getElementById('g-category').value;const isFamily=document.getElementById('g-family').checked;if(!name)return;
     const displayName=isFamily?`Οικογένεια ${name}`:name;
-    const {error}=await this.db.from('guests').insert([{event_id:this.currentEvent.id,user_id:this.user.id,name:displayName,original_name:name,phone,email,party_size:partySize,side,category,is_family:isFamily,rsvp_token:this.generateToken()}]);
+    const {error}=await this.db.from('guests').insert([{event_id:this.currentEvent.id,user_id:this.user.id,name:displayName,phone,email,party_size:partySize,side,category,is_family:isFamily,rsvp_token:this.generateToken()}]);
     if(error){this.showToast('Σφάλμα');return;}document.getElementById('g-name').value='';document.getElementById('g-party').value='1';document.getElementById('g-phone').value='';document.getElementById('g-email').value='';document.getElementById('g-family').checked=false;this.showToast('Ο καλεσμένος προστέθηκε!');this.refreshCurrentEvent();
   },
   async deleteGuest(id){if(!confirm('Διαγραφή καλεσμένου;'))return;await this.db.from('guests').delete().eq('id',id);this.refreshCurrentEvent();},
@@ -813,7 +975,7 @@ const app = {
         <img src="${p.public_url}" alt="" loading="lazy">
         <div class="photo-overlay">
           <p class="text-white text-xs font-medium truncate">${this.formatDate(p.created_at)}</p>
-          <button onclick="event.stopPropagation(); app.deletePhoto(${p.id})" class="mt-1 text-white/80 hover:text-red-400 text-xs">🗑️ Διαγραφή</button>
+          <button onclick="event.stopPropagation(); app.deletePhoto('${p.id}')" class="mt-1 text-white/80 hover:text-red-400 text-xs">🗑️ Διαγραφή</button>
         </div>
       </div>
     `).join('');
@@ -909,7 +1071,7 @@ const app = {
   openCoverSelector() {
     const gallery = document.getElementById('cover-gallery');
     gallery.innerHTML = this.photos.map((p, i) => `
-      <div onclick="app.setCover(${p.id})" class="aspect-square rounded-xl overflow-hidden cursor-pointer border-2 ${p.is_cover ? 'border-amber-500' : 'border-slate-200'} hover:border-amber-400 transition-all">
+      <div onclick="app.setCover('${p.id}')" class="aspect-square rounded-xl overflow-hidden cursor-pointer border-2 ${p.is_cover ? 'border-amber-500' : 'border-slate-200'} hover:border-amber-400 transition-all">
         <img src="${p.public_url}" class="w-full h-full object-cover">
       </div>
     `).join('');
