@@ -41,6 +41,7 @@
     .photo-item:hover .photo-overlay { opacity: 1; }
   </style>
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="bg-slate-50 min-h-screen pb-20 md:pb-0">
 <div id="toast-container" class="fixed top-4 right-4 z-[60] space-y-2 max-w-xs w-full"></div>
@@ -266,21 +267,21 @@
       <div><label class="block text-sm font-semibold text-slate-700 mb-2">Όνομα Εκδήλωσης</label><input type="text" id="event-name" required placeholder="π.χ. Γάμος Μαρίας & Γιώργου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
       <div class="grid grid-cols-2 gap-3">
         <div><label class="block text-sm font-semibold text-slate-700 mb-2">Ημερομηνία</label><input type="date" id="event-date" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
-        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Ώρα</label><input type="time" id="event-time" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Ώρα</label><input type="time" id="event-time" step="60" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"><p class="text-xs text-slate-400 mt-1">24ωρη μορφή (π.χ. 19:30)</p></div>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div><label class="block text-sm font-semibold text-slate-700 mb-2">Τοποθεσία Δεξίωσης</label><input type="text" id="event-location" placeholder="Κτήμα/Αίθουσα" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
         <div id="church-field"><label class="block text-sm font-semibold text-slate-700 mb-2">Τοποθεσία Μυστηρίου (Ναός)</label><input type="text" id="event-church" placeholder="Ι.Ν. Αγίου Νικολάου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
       </div>
-      <!-- WEDDING FIELDS -->
+      <!-- WEDDING/BAPTISM FIELDS -->
       <div id="wedding-fields" class="space-y-3">
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="text-xs font-semibold text-slate-700">Οικογένεια Γαμπρού</label><input type="text" id="event-groom-family" placeholder="π.χ. Οικογένεια Παπαδόπουλου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
-          <div><label class="text-xs font-semibold text-slate-700">Οικογένεια Νύφης</label><input type="text" id="event-bride-family" placeholder="π.χ. Οικογένεια Ανδρέου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+          <div><label id="label-groom-family" class="text-xs font-semibold text-slate-700">Οικογένεια Γαμπρού</label><input type="text" id="event-groom-family" placeholder="π.χ. Οικογένεια Παπαδόπουλου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+          <div><label id="label-bride-family" class="text-xs font-semibold text-slate-700">Οικογένεια Νύφης</label><input type="text" id="event-bride-family" placeholder="π.χ. Οικογένεια Ανδρέου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div><label class="text-xs font-semibold text-slate-700">Κουμπάρος</label><input type="text" id="event-koubaros" placeholder="Όνομα κουμπάρου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
-          <div><label class="text-xs font-semibold text-slate-700">Κουμπάρα</label><input type="text" id="event-koubara" placeholder="Όνομα κουμπάρας" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+        <div class="grid grid-cols-2 gap-3" id="koubaroi-row">
+          <div><label id="label-koubaros" class="text-xs font-semibold text-slate-700">Κουμπάρος</label><input type="text" id="event-koubaros" placeholder="Όνομα κουμπάρου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+          <div><label id="label-koubara" class="text-xs font-semibold text-slate-700">Κουμπάρα</label><input type="text" id="event-koubara" placeholder="Όνομα κουμπάρας" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
         </div>
       </div>
       <!-- BAPTISM FIELDS -->
@@ -298,7 +299,7 @@
         <h4 class="text-sm font-bold text-slate-700 mb-2">🌐 Event Website (προαιρετικά)</h4>
         <div class="space-y-3">
           <div><label class="text-xs text-slate-500">Πρόγραμμα Ημέρας (μία γραμμή ανά δραστηριότητα)</label><textarea id="event-program" rows="3" placeholder="17:00 – Τελετή&#10;18:00 – Συγχαρητήρια&#10;20:45 – Πρώτος Χορός" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm resize-none"></textarea></div>
-          <div><label class="text-xs text-slate-500">IBAN Λίστας Δώρων</label><input type="text" id="event-iban" placeholder="GRxx xxxx xxxx xxxx xxxx xxxx xxx" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+          <div><label class="text-xs text-slate-500">IBAN Λίστας Δώρων</label><input type="text" id="event-iban" placeholder="GRxx xxxx xxxx xxxx xxxx xxxx xxx" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"><p class="text-xs text-amber-600 mt-1">⚠️ Το IBAN είναι δημόσια ορατό σε όποιον ανοίξει το link της πρόσκλησης.</p></div>
           <div class="flex items-center gap-2 mt-2"><input type="checkbox" id="event-show-iban" class="w-4 h-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500" checked><label class="text-xs text-slate-600">Εμφάνιση IBAN στο Event Website</label></div>
           <div><label class="text-xs text-slate-500">Spotify Playlist ID</label><input type="text" id="event-spotify" placeholder="π.χ. 37i9dQZF1DX..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
           <div><label class="text-xs text-slate-500">Custom URL Slug (π.χ. giorgos-kai-maria)</label><input type="text" id="event-slug" placeholder="giorgos-kai-maria" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
@@ -414,7 +415,7 @@
           </div>
           <div><label class="text-xs font-semibold text-slate-700">Πρόγραμμα (μία γραμμή ανά δραστηριότητα)</label><textarea id="edit-program" rows="3" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm resize-none"></textarea></div>
           <div class="grid grid-cols-2 gap-3">
-            <div><label class="text-xs font-semibold text-slate-700">IBAN Δώρων</label><input type="text" id="edit-iban" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"></div>
+            <div><label class="text-xs font-semibold text-slate-700">IBAN Δώρων</label><input type="text" id="edit-iban" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"><p class="text-xs text-amber-600 mt-1">⚠️ Δημόσια ορατό στο link της πρόσκλησης.</p></div>
             <div><label class="text-xs font-semibold text-slate-700">Spotify Playlist ID</label><input type="text" id="edit-spotify" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"></div>
           </div>
           <div><label class="text-xs font-semibold text-slate-700">Custom Slug (π.χ. giorgos-kai-maria)</label><input type="text" id="edit-slug" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"></div>
@@ -719,6 +720,11 @@ const app = {
     const churchField=document.getElementById('church-field');
     const weddingFields=document.getElementById('wedding-fields');
     const baptismFields=document.getElementById('baptism-fields');
+    const groomLabel=document.getElementById('label-groom-family');
+    const brideLabel=document.getElementById('label-bride-family');
+    const koubarosLabel=document.getElementById('label-koubaros');
+    const koubaraLabel=document.getElementById('label-koubara');
+    const koubaroiRow=document.getElementById('koubaroi-row');
     
     if(type==='party'||type==='corporate'){
       churchField.classList.add('hidden');
@@ -726,13 +732,23 @@ const app = {
       baptismFields.classList.add('hidden');
     }else if(type==='baptism'){
       churchField.classList.remove('hidden');
-      weddingFields.classList.add('hidden');
-      baptismFields.classList.remove('hidden');
+      weddingFields.classList.remove('hidden');
+      baptismFields.classList.add('hidden');
+      if(groomLabel)groomLabel.textContent='Ο Πατέρας';
+      if(brideLabel)brideLabel.textContent='Η Μητέρα';
+      if(koubarosLabel)koubarosLabel.textContent='Νονός';
+      if(koubaraLabel)koubaraLabel.textContent='Νονά';
+      if(koubaroiRow)koubaroiRow.classList.remove('hidden');
     }else{
       // wedding
       churchField.classList.remove('hidden');
       weddingFields.classList.remove('hidden');
       baptismFields.classList.add('hidden');
+      if(groomLabel)groomLabel.textContent='Οικογένεια Γαμπρού';
+      if(brideLabel)brideLabel.textContent='Οικογένεια Νύφης';
+      if(koubarosLabel)koubarosLabel.textContent='Κουμπάρος';
+      if(koubaraLabel)koubaraLabel.textContent='Κουμπάρα';
+      if(koubaroiRow)koubaroiRow.classList.remove('hidden');
     }
   },
   async saveEvent(e){
@@ -750,7 +766,7 @@ const app = {
     const iban=document.getElementById('event-iban').value.trim();
     const showIban=document.getElementById('event-show-iban').checked;
     const spotify=document.getElementById('event-spotify').value.trim();
-    const slug=document.getElementById('event-slug').value.trim();
+    const slug=this.sanitizeSlug(document.getElementById('event-slug').value);
     
     // Wedding fields
     const groomFamily=document.getElementById('event-groom-family')?.value.trim()||'';
@@ -849,7 +865,7 @@ const app = {
       program:document.getElementById('edit-program').value.trim(),
       gift_iban:document.getElementById('edit-iban').value.trim(),
       spotify_playlist:document.getElementById('edit-spotify').value.trim(),
-      custom_slug:document.getElementById('edit-slug').value.trim()||null,
+      custom_slug:this.sanitizeSlug(document.getElementById('edit-slug').value)||null,
       event_time:document.getElementById('edit-time')?.value||null,
       groom_family_name:document.getElementById('edit-groom-family')?.value.trim()||'',
       bride_family_name:document.getElementById('edit-bride-family')?.value.trim()||'',
@@ -952,7 +968,7 @@ const app = {
 
   openCheckinScanner(){document.getElementById('modal-checkin').classList.remove('hidden');document.getElementById('modal-checkin').classList.add('flex');document.getElementById('qr-result').classList.add('hidden');this.scanner=new Html5Qrcode('qr-reader');this.scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:250}},(decodedText)=>{this.onQrCodeScanned(decodedText);},()=>{}).catch(err=>{document.getElementById('qr-reader').innerHTML='<p class="text-red-500 text-sm p-4">Σφάλμα κάμερας. Ελέγξτε τα δικαιώματα.</p>';});},
   async onQrCodeScanned(token){const guest=this.guests.find(g=>g.rsvp_token===token);if(!guest){this.showToast('Άγνωστο QR code');return;}if(this.scanner){await this.scanner.stop();this.scanner=null;}await this.db.from('guests').update({checked_in:true,checked_in_at:new Date().toISOString()}).eq('id',guest.id);document.getElementById('qr-guest-name').textContent=guest.name;document.getElementById('qr-result').classList.remove('hidden');this.refreshCurrentEvent();},
-  restartScanner(){document.getElementById('qr-result').classList.add('hidden');this.openCheckinScanner();},
+  restartScanner(){if(this.scanner){this.scanner.stop().catch(()=>{});this.scanner=null;}document.getElementById('qr-result').classList.add('hidden');this.openCheckinScanner();},
   closeCheckinScanner(){if(this.scanner){this.scanner.stop().catch(()=>{});this.scanner=null;}this.closeModal('modal-checkin');},
   printCheckinList(){const win=window.open('','_blank');const rows=this.guests.map(g=>`<tr><td>${this.escapeHTML(g.name)}</td><td>${g.party_size||1}</td><td>${g.checked_in?'✅':'⬜'}</td><td>${g.rsvp_status==='yes'?'ΝΑΙ':g.rsvp_status==='no'?'ΟΧΙ':'?'}</td></tr>`).join('');win.document.write(`<html><head><title>Check-in List</title><style>body{font-family:sans-serif;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#f5f5f5}</style></head><body><h1>${this.escapeHTML(this.currentEvent.name)} - Check-in List</h1><table><thead><tr><th>Όνομα</th><th>Άτομα</th><th>Check-in</th><th>RSVP</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);win.document.close();win.print();},
   downloadAllQRCodes(){this.guests.forEach((g,i)=>{setTimeout(()=>{const div=document.createElement('div');div.id='qrcode-'+g.id;div.style.position='absolute';div.style.left='-9999px';document.body.appendChild(div);new QRCode(div,{text:g.rsvp_token,width:256,height:256});setTimeout(()=>{const img=div.querySelector('img');if(img){const a=document.createElement('a');a.href=img.src;a.download=`qr-${g.name}.png`;a.click();}document.body.removeChild(div);},300);},i*400);});this.showToast('Λήψη QR codes ξεκίνησε...');},
@@ -1130,6 +1146,7 @@ const app = {
   generateToken(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);});},
   escapeHTML(str){if(!str)return'';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');},
   formatDate(date){if(!date)return'—';const d=new Date(date);return d.toLocaleDateString('el-GR',{day:'numeric',month:'short',year:'numeric'});},
+  sanitizeSlug(str){if(!str)return'';return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');},
   showToast(message){const container=document.getElementById('toast-container');const toast=document.createElement('div');toast.className='toast bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium';toast.textContent=message;container.appendChild(toast);setTimeout(()=>toast.remove(),3000);},
   upgradePlan(){alert('Η αναβάθμιση σε Premium θα είναι διαθέσιμη σύντομα! Επικοινωνήστε με τον διαχειριστή.');},
 };
