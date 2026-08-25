@@ -26,7 +26,7 @@ input,select,textarea{font-size:16px}
 <body class="gradient-hero min-h-screen" id="body">
 <div id="app" class="max-w-2xl mx-auto px-4 py-8 md:py-16 animate-in">
 <div id="loading" class="text-center py-20"><div class="w-12 h-12 border-4 border-rose-200 border-t-rose-600 rounded-full animate-spin mx-auto mb-4"></div><p class="text-slate-500">Φόρτωση πρόσκλησης...</p></div>
-<div id="error" class="hidden text-center py-20"><div class="text-6xl mb-4">😕</div><h2 class="text-2xl font-bold text-slate-900 mb-2">Η πρόσκληση δεν βρέθηκε</h2><p class="text-slate-500">Ο σύνδεσμος είναι λανθασμένος ή έχει λήξει.</p></div>
+<div id="error" class="hidden text-center py-20"><div class="text-6xl mb-4">😕</div><h2 class="text-2xl font-bold text-slate-900 mb-2">Η πρόσκληση δεν βρέθηκε</h2><p class="text-slate-500">Ο σύνδεσμος είναι λανθασμένος ή έχει λήξει.</p><p class="text-xs text-slate-400 mt-4" id="error-debug"></p></div>
 <div id="event-content" class="hidden space-y-8">
 <div class="text-center">
 <div class="inline-block bg-white/60 backdrop-blur-sm rounded-2xl px-6 py-2 mb-4 border border-white/50 shadow-sm"><span id="event-type-badge" class="text-rose-600 font-bold text-sm tracking-wider uppercase">Πρόσκληση</span></div>
@@ -42,7 +42,29 @@ input,select,textarea{font-size:16px}
 <div class="glass rounded-2xl p-6 border border-white/50 shadow-sm text-center" id="church-card"><div class="text-3xl mb-2">⛪</div><p class="text-sm text-slate-500 font-medium uppercase tracking-wider">Μυστήριο</p><p id="event-church" class="text-lg font-bold text-slate-900 mt-1"></p><div id="church-map" class="mt-3 rounded-xl overflow-hidden h-40 bg-slate-100"></div></div>
 <div class="glass rounded-2xl p-6 border border-white/50 shadow-sm text-center" id="reception-card"><div class="text-3xl mb-2">🥂</div><p class="text-sm text-slate-500 font-medium uppercase tracking-wider">Δεξίωση</p><p id="event-location" class="text-lg font-bold text-slate-900 mt-1"></p><div id="reception-map" class="mt-3 rounded-xl overflow-hidden h-40 bg-slate-100"></div></div>
 </div>
-<div class="glass rounded-2xl p-6 border border-white/50 shadow-sm text-center"><div class="text-3xl mb-2">📅</div><p class="text-sm text-slate-500 font-medium uppercase tracking-wider">Ημερομηνία</p><p id="event-date" class="text-xl font-bold text-slate-900 mt-1"></p></div>
+<div class="glass rounded-2xl p-6 border border-white/50 shadow-sm text-center"><div class="text-3xl mb-2">📅</div><p class="text-sm text-slate-500 font-medium uppercase tracking-wider">Ημερομηνία</p><p id="event-date" class="text-xl font-bold text-slate-900 mt-1"></p><p id="event-time" class="text-sm text-slate-600 mt-1"></p></div>
+
+<!-- FAMILIES & WITNESSES -->
+<div id="families-section" class="hidden glass rounded-2xl p-6 border border-white/50 shadow-sm">
+  <div id="wedding-families" class="hidden space-y-3">
+    <h3 class="text-lg font-bold text-slate-900 text-center">💍 Οικογένειες</h3>
+    <div class="grid grid-cols-2 gap-3 text-center">
+      <div class="bg-rose-50 rounded-xl p-3"><p class="text-xs text-rose-600 font-bold uppercase">Οικογένεια Γαμπρού</p><p id="groom-family" class="font-bold text-slate-900"></p></div>
+      <div class="bg-pink-50 rounded-xl p-3"><p class="text-xs text-pink-600 font-bold uppercase">Οικογένεια Νύφης</p><p id="bride-family" class="font-bold text-slate-900"></p></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 text-center mt-2">
+      <div class="bg-blue-50 rounded-xl p-3"><p class="text-xs text-blue-600 font-bold uppercase">Κουμπάρος</p><p id="koubaros-name" class="font-bold text-slate-900"></p></div>
+      <div class="bg-purple-50 rounded-xl p-3"><p class="text-xs text-purple-600 font-bold uppercase">Κουμπάρα</p><p id="koubara-name" class="font-bold text-slate-900"></p></div>
+    </div>
+  </div>
+  <div id="baptism-families" class="hidden space-y-3">
+    <h3 class="text-lg font-bold text-slate-900 text-center">🕊️ Νονοί</h3>
+    <div class="grid grid-cols-2 gap-3 text-center">
+      <div class="bg-blue-50 rounded-xl p-3"><p class="text-xs text-blue-600 font-bold uppercase">Νονός</p><p id="nounos-name" class="font-bold text-slate-900"></p></div>
+      <div class="bg-pink-50 rounded-xl p-3"><p class="text-xs text-pink-600 font-bold uppercase">Νονά</p><p id="nouna-name" class="font-bold text-slate-900"></p></div>
+    </div>
+  </div>
+</div>
 <div id="program-section" class="hidden glass rounded-2xl p-6 border border-white/50 shadow-sm"><h3 class="text-xl font-bold text-slate-900 mb-4 text-center">📋 Πρόγραμμα Ημέρας</h3><div id="program-timeline" class="space-y-4"></div></div>
 <div id="spotify-section" class="hidden glass rounded-2xl p-6 border border-white/50 shadow-sm text-center"><div class="text-3xl mb-2">🎵</div><h3 class="text-xl font-bold text-slate-900 mb-2">Η Μουσική μας</h3><p class="text-slate-500 text-sm mb-4">Ακούστε τη playlist που ετοιμάσαμε για εσάς!</p><a id="spotify-link" href="#" target="_blank" class="inline-flex items-center gap-2 bg-[#1DB954] hover:bg-[#1ed760] text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md touch-btn"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141 4.26-1.38 9.48-.72 13.199 1.68.36.18.54.78.24 1.14zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.179-1.38-.779-.18-.6.18-1.2.78-1.38 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>Άκουσε στο Spotify</a></div>
 <div id="iban-section" class="hidden glass rounded-2xl p-6 border border-white/50 shadow-sm text-center"><div class="text-3xl mb-2">🎁</div><h3 class="text-xl font-bold text-slate-900 mb-2">Λίστα Δώρων</h3><p class="text-slate-500 text-sm mb-4">Η παρουσία σας είναι το πιο όμορφο δώρο!<br>Αν επιθυμείτε, μπορείτε να συνεισφέρετε στον λογαριασμό μας.</p><div class="flex items-center justify-center gap-2 bg-slate-50 rounded-xl p-3 border border-slate-200"><code id="event-iban" class="text-sm font-mono text-slate-700"></code><button onclick="copyIBAN()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">Αντιγραφή</button></div></div>
@@ -82,31 +104,60 @@ let eventData=null;
 let countdownInterval=null;
 
 async function loadInvitation(){
-if(!token&&!eventId)return showError();
+console.log('DEBUG: token=',token,'eventId=',eventId);
+if(!token&&!eventId){console.log('DEBUG: no token or id');return showError('Δεν δόθηκε ID ή token');}
 try{
 if(token){
+console.log('DEBUG: loading by token');
 const {data:guest,error:gErr}=await db.from('guests').select('*,events(*)').eq('rsvp_token',token).single();
-if(gErr||!guest)return showError();
+if(gErr||!guest){console.log('DEBUG: guest not found',gErr);return showError('Guest not found: '+gErr?.message);}
 guestData=guest;
 eventData=guest.events;
+console.log('DEBUG: found event by token',eventData?.id);
 }else{
-// FIX: Δοκιμάζουμε πρώτα με ID (UUID) και μετά με slug
+console.log('DEBUG: loading event by id/slug:',eventId);
+// FIX: Χρησιμοποιούμε limit(1) αντί για maybeSingle() για συμβατότητα
 let event=null;
-const {data:byId}=await db.from('events').select('*').eq('id',eventId).maybeSingle();
-if(byId){event=byId;}else{
-const {data:bySlug}=await db.from('events').select('*').eq('custom_slug',eventId).maybeSingle();
-if(bySlug){event=bySlug;}
-}
-if(!event)return showError();
-eventData=event;
-}
-renderEvent();
-}catch(err){console.error('Load error:',err);showError();}
+let errorMsg='';
+
+// Πρώτα δοκιμάζουμε με id (UUID)
+try{
+const {data:rows,error:err}=await db.from('events').select('*').eq('id',eventId).limit(1);
+console.log('DEBUG: byId rows=',rows,'error=',err);
+if(rows&&rows.length>0){event=rows[0];}
+}catch(e){console.log('DEBUG: byId exception',e);}
+
+// Αν δεν βρέθηκε, δοκιμάζουμε με custom_slug
+if(!event){
+try{
+const {data:rows2,error:err2}=await db.from('events').select('*').eq('custom_slug',eventId).limit(1);
+console.log('DEBUG: bySlug rows=',rows2,'error=',err2);
+if(rows2&&rows2.length>0){event=rows2[0];}
+}catch(e){console.log('DEBUG: bySlug exception',e);}
 }
 
-function showError(){
+// Αν δεν βρέθηκε, δοκιμάζουμε με slug (case insensitive)
+if(!event){
+try{
+const {data:rows3,error:err3}=await db.from('events').select('*').ilike('custom_slug',eventId).limit(1);
+console.log('DEBUG: bySlugILike rows=',rows3,'error=',err3);
+if(rows3&&rows3.length>0){event=rows3[0];}
+}catch(e){console.log('DEBUG: bySlugILike exception',e);}
+}
+
+if(!event){console.log('DEBUG: event not found after all attempts');return showError('Event not found for: '+eventId);}
+eventData=event;
+console.log('DEBUG: found event',eventData?.id,eventData?.name);
+}
+renderEvent();
+}catch(err){console.error('Load error:',err);showError('Exception: '+err.message);}
+}
+
+function showError(msg){
+console.log('SHOW ERROR:',msg);
 document.getElementById('loading').classList.add('hidden');
 document.getElementById('error').classList.remove('hidden');
+document.getElementById('error-debug').textContent=msg||'';
 }
 
 function renderEvent(){
@@ -118,6 +169,35 @@ document.body.className=bodyGrads[eventData.type]||'gradient-hero';
 document.getElementById('event-type-badge').textContent=typeLabels[eventData.type]||'Εκδήλωση';
 document.getElementById('event-name').textContent=eventData.name;
 document.getElementById('event-date').textContent=new Date(eventData.date).toLocaleDateString('el-GR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+// Ώρα
+if(eventData.event_time){
+  document.getElementById('event-time').textContent='🕐 '+eventData.event_time;
+}else{
+  document.getElementById('event-time').classList.add('hidden');
+}
+
+// Οικογένειες & Κουμπάροι / Νονοί
+const familiesSection=document.getElementById('families-section');
+if(eventData.type==='wedding'&&(eventData.groom_family_name||eventData.bride_family_name||eventData.koubaros_name||eventData.koubara_name)){
+  familiesSection.classList.remove('hidden');
+  document.getElementById('wedding-families').classList.remove('hidden');
+  if(eventData.groom_family_name)document.getElementById('groom-family').textContent=eventData.groom_family_name;
+  else document.getElementById('groom-family').parentElement.classList.add('hidden');
+  if(eventData.bride_family_name)document.getElementById('bride-family').textContent=eventData.bride_family_name;
+  else document.getElementById('bride-family').parentElement.classList.add('hidden');
+  if(eventData.koubaros_name)document.getElementById('koubaros-name').textContent=eventData.koubaros_name;
+  else document.getElementById('koubaros-name').parentElement.classList.add('hidden');
+  if(eventData.koubara_name)document.getElementById('koubara-name').textContent=eventData.koubara_name;
+  else document.getElementById('koubara-name').parentElement.classList.add('hidden');
+}else if(eventData.type==='baptism'&&(eventData.nounos_name||eventData.nouna_name)){
+  familiesSection.classList.remove('hidden');
+  document.getElementById('baptism-families').classList.remove('hidden');
+  if(eventData.nounos_name)document.getElementById('nounos-name').textContent=eventData.nounos_name;
+  else document.getElementById('nounos-name').parentElement.classList.add('hidden');
+  if(eventData.nouna_name)document.getElementById('nouna-name').textContent=eventData.nouna_name;
+  else document.getElementById('nouna-name').parentElement.classList.add('hidden');
+}
+
 const eventDate=new Date(eventData.date+'T00:00:00');
 function updateCountdown(){
 const now=new Date();
@@ -131,7 +211,6 @@ document.getElementById('cd-seconds').textContent=Math.floor((diff%(1000*60))/10
 updateCountdown();
 countdownInterval=setInterval(updateCountdown,1000);
 
-// FIX: Google Maps με fallback σε απλό link
 if(eventData.church_location){
 document.getElementById('event-church').textContent=eventData.church_location;
 document.getElementById('church-map').innerHTML=`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(eventData.church_location)}" target="_blank" class="flex items-center justify-center h-full bg-slate-100 hover:bg-slate-200 transition-colors rounded-xl"><div class="text-center"><div class="text-3xl mb-1">🗺️</div><p class="text-sm text-slate-600 font-medium">Άνοιγμα στο Google Maps</p></div></a>`;
