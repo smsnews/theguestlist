@@ -786,7 +786,7 @@ const app = {
     gallery.innerHTML = this.photos.map((p, i) => `
       <div class="photo-item" onclick="app.openLightbox(${i})">
         ${p.is_cover ? '<span class="cover-badge">✨ ΕΞΩΦΥΛΛΟ</span>' : ''}
-        <img src="${p.url}" alt="" loading="lazy">
+        <img src="${p.public_url}" alt="" loading="lazy">
         <div class="photo-overlay">
           <p class="text-white text-xs font-medium truncate">${this.formatDate(p.created_at)}</p>
           <button onclick="event.stopPropagation(); app.deletePhoto(${p.id})" class="mt-1 text-white/80 hover:text-red-400 text-xs">🗑️ Διαγραφή</button>
@@ -859,7 +859,7 @@ const app = {
       const { error: insertError } = await this.db.from('event_photos').insert([{ 
         event_id: this.currentEvent.id, 
         user_id: this.user.id, 
-        url: publicUrl, 
+        public_url: publicUrl, 
         storage_path: path 
       }]);
 
@@ -895,7 +895,7 @@ const app = {
   async setCover(photoId) {
     await this.db.from('event_photos').update({ is_cover: false }).eq('event_id', this.currentEvent.id);
     await this.db.from('event_photos').update({ is_cover: true }).eq('id', photoId);
-    await this.db.from('events').update({ cover_photo_url: this.photos.find(p => p.id === photoId)?.url || null }).eq('id', this.currentEvent.id);
+    await this.db.from('events').update({ cover_photo_url: this.photos.find(p => p.id === photoId)?.public_url || null }).eq('id', this.currentEvent.id);
     this.showToast('Εξώφυλλο ενημερώθηκε!');
     this.closeModal('modal-cover');
     this.refreshPhotos();
@@ -910,7 +910,7 @@ const app = {
   },
   openLightbox(index) {
     this.photoIndex = index;
-    document.getElementById('lightbox-img').src = this.photos[index]?.url || '';
+    document.getElementById('lightbox-img').src = this.photos[index]?.public_url || '';
     document.getElementById('lightbox').classList.remove('hidden');
     document.getElementById('lightbox').classList.add('flex');
   },
@@ -919,7 +919,7 @@ const app = {
   nextPhoto() { if (this.photoIndex < this.photos.length - 1) this.openLightbox(this.photoIndex + 1); },
   async refreshPhotos() {
     if (!this.currentEvent) return;
-    const { data: photos } = await this.db.from('event_photos').select('*').eq('event_id', this.currentEvent.id).order('created_at', { ascending: false });
+    const { data: photos } = await this.db.from('event_photos').select('id,event_id,user_id,storage_path,public_url,caption,uploaded_by,created_at,is_cover').eq('event_id', this.currentEvent.id).order('created_at', { ascending: false });
     this.photos = photos || [];
     this.renderPhotos();
   },
