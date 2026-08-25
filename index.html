@@ -344,7 +344,10 @@
         <form onsubmit="app.saveGuest(event)" class="bg-white rounded-xl border-2 border-slate-200 p-3 md:p-4 mb-4 shadow-sm">
           <div class="grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-3">
             <input type="text" id="g-name" required placeholder="Ονοματεπώνυμο *" class="col-span-2 px-3 py-2.5 rounded-lg border border-slate-200 focus:border-rose-500 outline-none text-sm">
-            <input type="number" id="g-party" min="1" max="20" value="1" placeholder="Άτομα" class="px-3 py-2.5 rounded-lg border border-slate-200 focus:border-rose-500 outline-none text-sm w-16 md:w-auto">
+            <div class="flex flex-col">
+              <label for="g-party" class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">Άτομα</label>
+              <input type="number" id="g-party" min="1" max="20" value="1" class="px-3 py-2 rounded-lg border border-slate-200 focus:border-rose-500 outline-none text-sm w-full">
+            </div>
             <input type="tel" id="g-phone" placeholder="Τηλέφωνο" class="px-3 py-2.5 rounded-lg border border-slate-200 focus:border-rose-500 outline-none text-sm">
             <input type="email" id="g-email" placeholder="Email" class="px-3 py-2.5 rounded-lg border border-slate-200 focus:border-rose-500 outline-none text-sm">
             <select id="g-side" class="px-3 py-2.5 rounded-lg border border-slate-200 focus:border-rose-500 outline-none bg-white text-sm"><option value="">Πλευρά</option><option value="groom">Γαμπρού</option><option value="bride">Νύφης</option></select>
@@ -598,6 +601,7 @@ const app = {
   currentEvent: null, currentTab: 'guests', importData: [],
   turnstileWidget: null, scanner: null,
   photos: [], photoIndex: 0,
+  refreshInterval: null,
 
   init() {
     this.db = supabase.createClient('https://vozfcvludahuvwatfwmy.supabase.co','sb_publishable_DZ-ZKOFhCnCmhdbaLSUG_g_XAH53N1E');
@@ -823,8 +827,29 @@ const app = {
       alert('Σφάλμα αποθήκευσης:\n' + (err.message || err) + '\n\nΈλεγξε το Console (F12) για λεπτομέρειες.');
     }
   },
-  async openEvent(id){this.currentEvent=this.events.find(e=>e.id===id);if(!this.currentEvent)return;document.getElementById('detail-title').textContent=this.currentEvent.name;document.getElementById('detail-subtitle').textContent=`${this.formatDate(this.currentEvent.date)} • ${this.currentEvent.location||'Χωρίς τοποθεσία'}`;document.getElementById('print-title').textContent=this.currentEvent.name;document.getElementById('print-subtitle').textContent=`${this.formatDate(this.currentEvent.date)} • ${this.currentEvent.location||''}`;await this.refreshCurrentEvent();document.getElementById('modal-detail').classList.remove('hidden');document.getElementById('modal-detail').classList.add('flex');this.setTab('guests');},
-  closeModal(id){const el=document.getElementById(id);if(el){el.classList.add('hidden');el.classList.remove('flex');}if(id==='modal-detail'){this.currentEvent=null;this.currentTab='guests';}},
+  async openEvent(id){
+    this.currentEvent=this.events.find(e=>e.id===id);
+    if(!this.currentEvent)return;
+    document.getElementById('detail-title').textContent=this.currentEvent.name;
+    document.getElementById('detail-subtitle').textContent=`${this.formatDate(this.currentEvent.date)} • ${this.currentEvent.location||'Χωρίς τοποθεσία'}`;
+    document.getElementById('print-title').textContent=this.currentEvent.name;
+    document.getElementById('print-subtitle').textContent=`${this.formatDate(this.currentEvent.date)} • ${this.currentEvent.location||''}`;
+    await this.refreshCurrentEvent();
+    document.getElementById('modal-detail').classList.remove('hidden');
+    document.getElementById('modal-detail').classList.add('flex');
+    this.setTab('guests');
+    // Auto-refresh κάθε 10 δευτερόλεπτα για να φαίνονται νέα RSVP
+    if(this.refreshInterval)clearInterval(this.refreshInterval);
+    this.refreshInterval=setInterval(()=>{if(this.currentEvent)this.refreshCurrentEvent();},10000);
+  },
+  closeModal(id){
+    const el=document.getElementById(id);
+    if(el){el.classList.add('hidden');el.classList.remove('flex');}
+    if(id==='modal-detail'){
+      this.currentEvent=null;this.currentTab='guests';
+      if(this.refreshInterval){clearInterval(this.refreshInterval);this.refreshInterval=null;}
+    }
+  },
   setTab(tab){this.currentTab=tab;['guests','tables','rsvp','reception','edit','photos'].forEach(t=>{const btn=document.getElementById('tab-'+t),panel=document.getElementById('panel-'+t);if(t===tab){btn.classList.remove('bg-white','border','border-slate-200','text-slate-600');btn.classList.add('bg-slate-900','text-white','shadow-md');panel.classList.remove('hidden');}else{btn.classList.add('bg-white','border','border-slate-200','text-slate-600');btn.classList.remove('bg-slate-900','text-white','shadow-md');panel.classList.add('hidden');}});if(tab==='edit')this.loadEditForm();},
   loadEditForm(){
     if(!this.currentEvent)return;
