@@ -42,7 +42,6 @@
   </style>
 <base target="_blank">
 <base target="_blank">
-<base target="_blank">
 </head>
 <body class="bg-slate-50 min-h-screen pb-20 md:pb-0">
 <div id="toast-container" class="fixed top-4 right-4 z-[60] space-y-2 max-w-xs w-full"></div>
@@ -326,7 +325,7 @@
       </div>
     </div>
     <div class="p-4 md:p-6">
-      <div class="flex gap-2 mb-4 md:mb-6 no-print border-b border-slate-100 pb-4 overflow-x-auto">
+     <div class="flex flex-wrap gap-2 mb-4 md:mb-6 no-print border-b border-slate-100 pb-4">
         <button onclick="app.setTab('guests')" id="tab-guests" class="px-4 md:px-5 py-2.5 rounded-xl text-sm font-bold bg-slate-900 text-white shadow-md transition-all whitespace-nowrap touch-btn">Καλεσμένοι</button>
         <button onclick="app.setTab('tables')" id="tab-tables" class="px-4 md:px-5 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap touch-btn">Τραπέζια</button>
         <button onclick="app.setTab('rsvp')" id="tab-rsvp" class="px-4 md:px-5 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap touch-btn">RSVP</button>
@@ -403,19 +402,14 @@
         <div id="rsvp-list" class="space-y-2"></div>
       </div>
 
-<div id="panel-reception" class="hidden space-y-4">
-  <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 no-print">
-    <div class="flex gap-2">
-      <button onclick="app.setReceptionFilter('all')" id="rec-filter-all" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white">Όλοι (Μυστήριο)</button>
-      <button onclick="app.setReceptionFilter('invited')" id="rec-filter-invited" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Προσκεκλημένοι Δεξίωσης</button>
-      <button onclick="app.setReceptionFilter('confirmed')" id="rec-filter-confirmed" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-600 border border-slate-200">Επιβεβαιωμένοι Δεξίωσης</button>
-    </div>
-    <button onclick="app.printCateringList()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1">
-      🖨️ Εκτύπωση Catering / Maître
-    </button>
-  </div>
-  <div id="reception-list" class="space-y-2"></div>
-</div>
+      <div id="panel-reception" class="hidden space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 no-print">
+          <button onclick="app.printCateringList()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1">
+            🖨️ Εκτύπωση Catering / Maître
+          </button>
+        </div>
+        <div id="reception-list" class="space-y-2"></div>
+      </div>
 
       <div id="panel-edit" class="hidden space-y-4">
         <div class="bg-blue-50 rounded-xl p-4 border border-blue-200 mb-4"><p class="text-sm text-blue-800">✏️ Επεξεργάστε τα στοιχεία της εκδήλωσης και του Event Website. Οι αλλαγές ενημερώνονται αμέσως.</p></div>
@@ -671,7 +665,32 @@ const app = {
     else if(hash.includes('type=signup')||hash.includes('type=email_change'))this.showVerifiedModal();
     if('serviceWorker' in navigator)navigator.serviceWorker.register('data:text/javascript;base64,'+btoa(`self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))));`)).catch(()=>{});
   },
-
+  
+async sendEmailInvitation(guestEmail, guestName, eventName, inviteLink) {
+        try {
+            const response = await fetch('ajax.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'send_email',
+                    email: guestEmail,
+                    name: guestName,
+                    event_name: eventName,
+                    link: inviteLink
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('Το email στάλθηκε με επιτυχία!');
+            } else {
+                alert('Σφάλμα: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Network error:', error);
+            alert('Προέκυψε πρόβλημα σύνδεσης με τον server.');
+        }
+    },
+    
   toggleAuthMode(){
     const sf=document.getElementById('signup-fields'),btn=document.getElementById('auth-submit-btn'),txt=document.getElementById('auth-toggle-text'),tbtn=document.getElementById('auth-toggle-btn'),fr=document.getElementById('forgot-password-row'),tc=document.getElementById('turnstile-container');
     const isSignup=sf.classList.contains('hidden');
@@ -903,7 +922,28 @@ const app = {
       if(this.refreshInterval){clearInterval(this.refreshInterval);this.refreshInterval=null;}
     }
   },
-  setTab(tab){this.currentTab=tab;['guests','tables','rsvp','reception','edit','photos'].forEach(t=>{const btn=document.getElementById('tab-'+t),panel=document.getElementById('panel-'+t);if(t===tab){btn.classList.remove('bg-white','border','border-slate-200','text-slate-600');btn.classList.add('bg-slate-900','text-white','shadow-md');panel.classList.remove('hidden');}else{btn.classList.add('bg-white','border','border-slate-200','text-slate-600');btn.classList.remove('bg-slate-900','text-white','shadow-md');panel.classList.add('hidden');}});if(tab==='edit')this.loadEditForm();},
+ setTab(tab){
+    this.currentTab=tab;
+    // Αφαιρούμε το focus από τυχόν ενεργό στοιχείο για να μη μένει "πατημένο" στο κινητό
+    if(document.activeElement) document.activeElement.blur();
+   ['guests','tables','rsvp','reception','edit','photos'].forEach(t=>{
+    const btn=document.getElementById('tab-'+t),panel=document.getElementById('panel-'+t);
+    if(t===tab){
+        btn.classList.remove('bg-white','border','border-slate-200','text-slate-600');
+        btn.classList.add('bg-slate-900','text-white','shadow-md');
+        btn.style.backgroundColor = '#0f172a'; // Σκούρο σκληρό χρώμα
+        btn.style.color = '#ffffff';
+        panel.classList.remove('hidden');
+    }else{
+        btn.classList.add('bg-white','border','border-slate-200','text-slate-600');
+        btn.classList.remove('bg-slate-900','text-white','shadow-md');
+        btn.style.backgroundColor = '#ffffff'; // Λευκό
+        btn.style.color = '#475569';
+        panel.classList.add('hidden');
+    }
+});
+    if(tab==='edit')this.loadEditForm();
+},
   loadEditForm(){
     if(!this.currentEvent)return;
     document.getElementById('edit-name').value=this.currentEvent.name;
@@ -1010,10 +1050,42 @@ const app = {
     a.download=`${this.currentEvent.name}-guests.csv`;
     a.click();
   },  
-  async saveGuest(e){e.preventDefault();if(!this.currentEvent)return;const name=document.getElementById('g-name').value.trim();const partySize=parseInt(document.getElementById('g-party').value)||1;const phone=document.getElementById('g-phone').value.trim();const email=document.getElementById('g-email').value.trim();const side=document.getElementById('g-side').value;const category=document.getElementById('g-category').value;const isFamily=document.getElementById('g-family').checked;if(!name)return;
+  async saveGuest(e){
+    e.preventDefault();
+    if(!this.currentEvent)return;
+    const name=document.getElementById('g-name').value.trim();
+    const partySize=parseInt(document.getElementById('g-party').value)||1;
+    const phone=document.getElementById('g-phone').value.trim();
+    const email=document.getElementById('g-email').value.trim();
+    const side=document.getElementById('g-side').value;
+    const category=document.getElementById('g-category').value;
+    const isFamily=document.getElementById('g-family').checked;
+    if(!name)return;
     const displayName=isFamily?`Οικογένεια ${name}`:name;
-    const {error}=await this.db.from('guests').insert([{event_id:this.currentEvent.id,user_id:this.user.id,name:displayName,phone,email,party_size:partySize,side,category,is_family:isFamily,rsvp_token:this.generateToken()}]);
-    if(error){this.showToast('Σφάλμα');return;}document.getElementById('g-name').value='';document.getElementById('g-party').value='1';document.getElementById('g-phone').value='';document.getElementById('g-email').value='';document.getElementById('g-family').checked=false;this.showToast('Ο καλεσμένος προστέθηκε!');this.refreshCurrentEvent();
+    const {error}=await this.db.from('guests').insert([{
+      event_id:this.currentEvent.id,
+      user_id:this.user.id,
+      name:displayName,
+      phone,
+      email,
+      party_size:partySize,
+      side,
+      category,
+      is_family:isFamily,
+      rsvp_token:this.generateToken()
+    }]);
+    if(error){
+      this.showToast('Σφάλμα κατά την προσθήκη');
+      return;
+    }
+    // Reset φόρμας
+    document.getElementById('g-name').value='';
+    document.getElementById('g-party').value='1';
+    document.getElementById('g-phone').value='';
+    document.getElementById('g-email').value='';
+    document.getElementById('g-family').checked=false;
+    this.showToast('Ο καλεσμένος προστέθηκε!');
+    this.refreshCurrentEvent();
   },
   openEditGuestModal(id){
     const g=this.guests.find(x=>x.id===id);
@@ -1088,6 +1160,17 @@ const app = {
     this.closeModal('modal-edit-guest');
     this.refreshCurrentEvent();
   },
+  async deleteGuest(id) {
+    if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτόν τον καλεσμένο;')) return;
+    const { error } = await this.db.from('guests').delete().eq('id', id);
+    if (error) {
+      this.showToast('Σφάλμα κατά τη διαγραφή');
+      return;
+    }
+    this.showToast('Ο καλεσμένος διαγράφηκε!');
+    this.refreshCurrentEvent();
+  },
+
 renderGuests(){
     const tbody=document.getElementById('guests-table-body');
     const limit=this.currentEvent?.plan==='premium'?500:50;
@@ -1189,7 +1272,12 @@ renderGuests(){
 
   renderRSVP(){const yes=this.guests.filter(g=>g.rsvp_status==='yes').reduce((sum,g)=>sum+(g.rsvp_count||g.party_size||1),0);const no=this.guests.filter(g=>g.rsvp_status==='no').reduce((sum,g)=>sum+(g.party_size||1),0);const maybe=this.guests.filter(g=>!g.rsvp_status||g.rsvp_status==='pending').reduce((sum,g)=>sum+(g.party_size||1),0);document.getElementById('rsvp-yes').textContent=yes;document.getElementById('rsvp-no').textContent=no;document.getElementById('rsvp-maybe').textContent=maybe;
     const list=document.getElementById('rsvp-list');if(!this.guests.length){list.innerHTML='<p class="text-slate-400 text-center py-8">Καμία απάντηση ακόμα</p>';return;}
-    list.innerHTML=this.guests.map(g=>{const status=g.rsvp_status==='yes'?'✅ Θα έρθουν':g.rsvp_status==='no'?'❌ Δεν έρχονται':'⏳ Αναμονή';const color=g.rsvp_status==='yes'?'text-emerald-600':g.rsvp_status==='no'?'text-red-600':'text-amber-600';return `<div class="flex items-center justify-between bg-white rounded-xl p-3 border border-slate-200 shadow-sm"><div><p class="font-semibold text-sm text-slate-900">${this.escapeHTML(g.name)} <span class="text-slate-400 text-xs">(${g.party_size||1} άτομα)</span></p><p class="text-xs ${color}">${status}</p></div><div class="flex gap-1 no-print">${Array.from({length:g.party_size||1},(_,i)=>i+1).map(n=>`<button onclick="app.updateRSVP('${g.id}','yes',${n})" class="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 text-xs font-bold touch-btn" title="${n} άτομα">${n}</button>`).join('')}<button onclick="app.updateRSVP('${g.id}','no')" class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold touch-btn">❌</button><button onclick="app.updateRSVP('${g.id}','pending')" class="p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 text-xs font-bold touch-btn">⏳</button></div></div>`;}).join('');
+    list.innerHTML=this.guests.map(g=>{
+      const status=g.rsvp_status==='yes'?'✅ Θα έρθουν':g.rsvp_status==='no'?'❌ Δεν έρχονται':'⏳ Αναμονή';
+      const color=g.rsvp_status==='yes'?'text-emerald-600':g.rsvp_status==='no'?'text-red-600':'text-amber-600';
+      const currentCount=g.rsvp_count||g.party_size||1;
+      return `<div class="flex items-center justify-between bg-white rounded-xl p-3 border border-slate-200 shadow-sm"><div><p class="font-semibold text-sm text-slate-900">${this.escapeHTML(g.name)} <span class="text-slate-400 text-xs">(${g.party_size||1} άτομα)</span></p><p class="text-xs ${color}">${status}${g.rsvp_status==='yes'?' ('+currentCount+' άτομα)':''}</p></div><div class="flex gap-1 no-print">${Array.from({length:g.party_size||1},(_,i)=>i+1).map(n=>{const isSelected=g.rsvp_status==='yes'&&currentCount===n;return `<button onclick="app.updateRSVP('${g.id}','yes',${n})" class="px-2 py-1 rounded-lg text-xs font-bold touch-btn transition-all ${isSelected?'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-300':'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}" title="${n} άτομα">${n}</button>`;}).join('')}<button onclick="app.updateRSVP('${g.id}','no')" class="p-2 rounded-lg ${g.rsvp_status==='no'?'bg-red-600 text-white shadow-md ring-2 ring-red-300':'bg-red-50 text-red-600 hover:bg-red-100'} text-xs font-bold touch-btn transition-all">❌</button><button onclick="app.updateRSVP('${g.id}','pending')" class="p-2 rounded-lg ${!g.rsvp_status||g.rsvp_status==='pending'?'bg-amber-500 text-white shadow-md ring-2 ring-amber-300':'bg-amber-50 text-amber-600 hover:bg-amber-100'} text-xs font-bold touch-btn transition-all">⏳</button></div></div>`;
+    }).join('');
   },
   renderReception(){const list=document.getElementById('reception-list');if(!this.guests.length){list.innerHTML='<p class="text-slate-400 text-center py-8">Κανένας καλεσμένος</p>';return;}
     list.innerHTML=this.guests.map(g=>{const reception=g.reception!==false;return `<div class="flex items-center justify-between bg-white rounded-xl p-3 border border-slate-200 shadow-sm"><div><p class="font-semibold text-sm text-slate-900">${this.escapeHTML(g.name)} <span class="text-slate-400 text-xs">(${g.party_size||1} άτομα)</span></p><p class="text-xs text-slate-500">${g.rsvp_status==='yes'?'✅ Θα έρθουν':g.rsvp_status==='no'?'❌ Δεν έρχονται':'⏳ Αναμονή'}</p></div><button onclick="app.toggleReception('${g.id}')" class="px-3 py-2 rounded-lg text-xs font-bold transition-all touch-btn ${reception?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">${reception?'🍽️ Στη δεξίωση':'❌ Όχι στη δεξίωση'}</button></div>`;}).join('');
@@ -1206,7 +1294,7 @@ renderGuests(){
   normalizeCategory(val){const v=val.toLowerCase();if(v.includes('οικογ')||v.includes('family'))return'family';if(v.includes('φίλ')||v.includes('friends'))return'friends';if(v.includes('κουμπ')||v.includes('koubar'))return'koubaroi';return'other';},
   showImportPreview(){const tbody=document.getElementById('import-preview-body');tbody.innerHTML=this.importData.map((g,i)=>`<tr><td class="px-3 py-2 text-xs">${i+1}</td><td class="px-3 py-2 text-xs font-medium">${this.escapeHTML(g.name)}</td><td class="px-3 py-2 text-xs">${this.escapeHTML(g.phone)}</td><td class="px-3 py-2 text-xs">${this.escapeHTML(g.email)}</td><td class="px-3 py-2 text-xs">${g.party_size}</td><td class="px-3 py-2 text-xs">${g.side}</td><td class="px-3 py-2 text-xs">${g.category}</td></tr>`).join('');document.getElementById('modal-import').classList.remove('hidden');document.getElementById('modal-import').classList.add('flex');},
   async confirmImport(){if(!this.currentEvent||!this.importData.length)return;const limit=this.currentEvent.plan==='premium'?500:50;const currentTotal=this.guests.length+this.importData.length;if(currentTotal>limit){alert(`Υπέρβαση ορίου! Μέγιστο: ${limit}`);return;}
-    const inserts=this.importData.map(g=>({event_id:this.currentEvent.id,user_id:this.user.id,name:g.name,phone:g.phone,email:g.email,party_size:g.partySize,side:g.side,category:g.category,rsvp_token:this.generateToken()}));
+    const inserts=this.importData.map(g=>({event_id:this.currentEvent.id,user_id:this.user.id,name:g.name,phone:g.phone,email:g.email,party_size:g.party_size,side:g.side,category:g.category,rsvp_token:this.generateToken()}));
     const {error}=await this.db.from('guests').insert(inserts);if(error){alert(error.message);return;}this.showToast(`${inserts.length} καλεσμένοι εισήχθησαν!`);this.closeModal('modal-import');this.importData=[];this.refreshCurrentEvent();
   },
   exportGuestsToExcel(){if(!this.currentEvent)return;const rows=this.guests.map(g=>({'Όνομα':g.name,'Τηλέφωνο':g.phone||'','Email':g.email||'','Άτομα':g.party_size||1,'Πλευρά':g.side==='groom'?'Γαμπρού':g.side==='bride'?'Νύφης':'','Ομάδα':g.category||'','RSVP':g.rsvp_status||'pending','Check-in':g.checked_in?'ΝΑΙ':'ΟΧΙ','Τραπέζι':g.table_name||'','Σημειώσεις':g.notes||''}));const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Guests');XLSX.writeFile(wb,`${this.currentEvent.name}-guests.xlsx`);},
@@ -1217,6 +1305,89 @@ renderGuests(){
   restartScanner(){if(this.scanner){this.scanner.stop().catch(()=>{});this.scanner=null;}document.getElementById('qr-result').classList.add('hidden');this.openCheckinScanner();},
   closeCheckinScanner(){if(this.scanner){this.scanner.stop().catch(()=>{});this.scanner=null;}this.closeModal('modal-checkin');},
   printCheckinList(){const win=window.open('','_blank');const rows=this.guests.map(g=>`<tr><td>${this.escapeHTML(g.name)}</td><td>${g.party_size||1}</td><td>${g.checked_in?'✅':'⬜'}</td><td>${g.rsvp_status==='yes'?'ΝΑΙ':g.rsvp_status==='no'?'ΟΧΙ':'?'}</td></tr>`).join('');win.document.write(`<html><head><title>Check-in List</title><style>body{font-family:sans-serif;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#f5f5f5}</style></head><body><h1>${this.escapeHTML(this.currentEvent.name)} - Check-in List</h1><table><thead><tr><th>Όνομα</th><th>Άτομα</th><th>Check-in</th><th>RSVP</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);win.document.close();win.print();},
+  printCateringList() {
+    if (!this.currentEvent) return;
+    const receptionGuests = this.guests.filter(g => g.reception !== false);
+    const confirmedGuests = receptionGuests.filter(g => g.rsvp_status === 'yes');
+
+    // Ομαδοποίηση ανά τραπέζι
+    const tablesMap = {};
+    receptionGuests.forEach(g => {
+      const tName = g.table_name ? String(g.table_name) : 'Χωρίς Τραπέζι';
+      if (!tablesMap[tName]) tablesMap[tName] = [];
+      tablesMap[tName].push(g);
+    });
+
+    const win = window.open('', '_blank');
+    if (!win) {
+      alert('Παρακαλώ επιτρέψτε τα αναδυόμενα παράθυρα (pop-ups) για να ανοίξει η εκτύπωση.');
+      return;
+    }
+
+    let tablesHtml = '';
+
+    for (let tName in tablesMap) {
+      const gList = tablesMap[tName];
+      const tTotal = gList.reduce((s, x) => s + (x.party_size || 1), 0);
+      const tConfirmed = gList.filter(x => x.rsvp_status === 'yes').reduce((s, x) => s + (x.rsvp_count || x.party_size || 1), 0);
+
+      tablesHtml += `
+        <div style="margin-bottom: 20px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; page-break-inside: avoid;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #0f172a; padding-bottom: 6px; margin-bottom: 8px;">
+            <strong style="font-size: 16px;">🪑 ${this.escapeHTML(tName)}</strong>
+            <span style="font-size: 13px;">Σύνολο: <strong>${tTotal}</strong> | Επιβεβαιωμένα Άτομα: <strong style="color: #16a34a;">${tConfirmed}</strong></span>
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            ${gList.map(g => `
+              <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:6px 0; font-weight:600;">${this.escapeHTML(g.name || '')}</td>
+                <td style="padding:6px 0; text-align:center;">${g.party_size || 1} άτομα</td>
+                <td style="padding:6px 0; text-align:right;">${g.rsvp_status === 'yes' ? '✅ Επιβεβαιώθηκε' : g.rsvp_status === 'no' ? '❌ Ακυρώθηκε' : '⏳ Εκκρεμεί'}</td>
+              </tr>
+            `).join('')}
+          </table>
+        </div>
+      `;
+    }
+
+    const totalInvitedPeople = receptionGuests.reduce((s, g) => s + (g.party_size || 1), 0);
+    const totalConfirmedPeople = confirmedGuests.reduce((s, g) => s + (g.rsvp_count || g.party_size || 1), 0);
+
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Λίστα Catering / Maître - ${this.escapeHTML(this.currentEvent.name || '')}</title>
+        <style>
+          body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; max-width: 900px; margin: 0 auto; }
+          .header { border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
+          .header h2 { margin: 0 0 4px 0; font-size: 22px; }
+          .header h3 { margin: 0; font-size: 15px; color: #64748b; font-weight: normal; }
+          .stats { display: flex; gap: 24px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-size: 14px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>🍽️ Λίστα Catering & Πλάνου Τραπεζιών</h2>
+          <h3>${this.escapeHTML(this.currentEvent.name || '')} — ${this.formatDate(this.currentEvent.date)}</h3>
+        </div>
+        <div class="stats">
+          <div>Προσκεκλημένοι Δεξίωσης: <strong>${receptionGuests.length} προσκλήσεις / ${totalInvitedPeople} άτομα</strong></div>
+          <div>Επιβεβαιωμένα Άτομα: <strong style="color:#16a34a;">${totalConfirmedPeople}</strong></div>
+        </div>
+        ${tablesHtml}
+      </body>
+      </html>
+    `);
+    win.document.close();
+
+    setTimeout(() => {
+      win.focus();
+      win.print();
+    }, 250);
+  },
   downloadAllQRCodes(){this.guests.forEach((g,i)=>{setTimeout(()=>{const div=document.createElement('div');div.id='qrcode-'+g.id;div.style.position='absolute';div.style.left='-9999px';document.body.appendChild(div);new QRCode(div,{text:g.rsvp_token,width:256,height:256});setTimeout(()=>{const img=div.querySelector('img');if(img){const a=document.createElement('a');a.href=img.src;a.download=`qr-${g.name}.png`;a.click();}document.body.removeChild(div);},300);},i*400);});this.showToast('Λήψη QR codes ξεκίνησε...');},
 
   async sendBulkSMS(){if(!this.currentEvent)return;this.showToast('Προετοιμασία SMS...');const guestsWithPhone=this.guests.filter(g=>g.phone);if(!guestsWithPhone.length){this.showToast('Κανένα τηλέφωνο διαθέσιμο');return;}
