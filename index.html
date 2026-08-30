@@ -1,26 +1,698 @@
-async sendEmailInvitation(guestEmail, guestName, eventName, inviteLink) {
-        try {
-            const response = await fetch('ajax.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'send_email',
-                    email: guestEmail,
-                    name: guestName,
-                    event_name: eventName,
-                    link: inviteLink
-                })
-            });
-            const data = await response.json();
-            if (data.success) {
-                alert('Το email στάλθηκε με επιτυχία!');
-            } else {
-                alert('Σφάλμα: ' + data.error);
-            }
-        } catch (error) {
-            console.error('Network error:', error);
-            alert('Προέκυψε πρόβλημα σύνδεσης με τον server.');
-        }
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#e11d48">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GuestList">
+  <meta name="description" content="Διαχείριση Εκδηλώσεων - Λίστες Καλεσμένων, RSVP, Πλάνο Τραπεζιών">
+  <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiVGhlIEd1ZXN0IExpc3QiLCJzaG9ydF9uYW1lIjoiR3Vlc3RMaXN0Iiwic3RhcnRfdXJsIjoiLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiNmZmZmZmYiLCJ0aGVtZV9jb2xvciI6IiNlMTFkNDgiLCJpY29ucyI6W3sic3JjIjoiL2ljb24ucG5nIiwic2l6ZXMiOiIxOTJ4MTkyIiwidHlwZSI6ImltYWdlL3BuZyJ9XX0=">
+  <title>The Guest List - Διαχείριση Εκδηλώσεων</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+    .animate-in { animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .toast { animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    @media print { .no-print { display: none !important; } .print-only { display: block !important; } body { background: white; } }
+    .print-only { display: none; }
+    @media (max-width: 640px) { .mobile-full { width: 100% !important; } .mobile-stack { flex-direction: column !important; } .mobile-hide { display: none !important; } .mobile-p-2 { padding: 0.5rem !important; } .mobile-text-sm { font-size: 0.875rem !important; } .mobile-card { border-radius: 1rem !important; margin-bottom: 0.75rem !important; } }
+    .touch-btn { min-height: 44px; min-width: 44px; }
+    input, select, textarea { font-size: 16px; }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; z-index: 50; padding-bottom: env(safe-area-inset-bottom); }
+    .photo-item { aspect-ratio: 1; border-radius: 12px; overflow: hidden; position: relative; cursor: pointer; background: #f1f5f9; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.3s; }
+    .photo-item:hover { transform: scale(1.03); box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+    .photo-item img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-item .cover-badge { position: absolute; top: 8px; left: 8px; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; background: #f59e0b; color: #1e293b; z-index: 2; }
+    .photo-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%); opacity: 0; transition: opacity 0.3s; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px; }
+    .photo-item:hover .photo-overlay { opacity: 1; }
+  </style>
+  <base target="_blank">
+</head>
+<body class="bg-slate-50 min-h-screen pb-20 md:pb-0">
+<div id="toast-container" class="fixed top-4 right-4 z-[60] space-y-2 max-w-xs w-full"></div>
+
+<!-- AUTH MODAL -->
+<div id="modal-auth" class="fixed inset-0 bg-slate-50 z-[100] flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 text-center animate-in">
+    <div class="w-16 h-16 bg-rose-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-lg shadow-rose-200 mx-auto mb-4">G</div>
+    <h2 class="text-2xl font-bold text-slate-900 tracking-tight mb-1">The Guest List</h2>
+    <p class="text-sm text-slate-500 mb-6">Συνδεθείτε για να διαχειριστείτε τις εκδηλώσεις σας</p>
+    <form id="auth-form" onsubmit="app.handleAuth(event)" class="space-y-3">
+      <div id="signup-fields" class="hidden space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <input type="text" id="auth-firstname" placeholder="Όνομα *" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all text-left">
+          <input type="text" id="auth-lastname" placeholder="Επώνυμο *" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all text-left">
+        </div>
+        <input type="tel" id="auth-phone" placeholder="Τηλέφωνο (προαιρετικό)" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all text-left">
+      </div>
+      <input type="email" id="auth-email" required placeholder="Email" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all text-left">
+      <input type="password" id="auth-password" required placeholder="Κωδικός (τουλ. 6 χαρακτήρες)" minlength="6" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all text-left">
+      <div id="turnstile-container" class="hidden flex justify-center"></div>
+      <button type="submit" id="auth-submit-btn" class="w-full bg-slate-900 hover:bg-slate-800 text-white px-4 py-3.5 rounded-xl font-bold transition-all shadow-md touch-btn">Σύνδεση</button>
+    </form>
+    <div class="mt-4 text-sm text-center" id="forgot-password-row"><button onclick="app.showForgotPassword()" class="text-slate-400 hover:text-slate-600 transition-colors">Ξέχασες τον κωδικό σου;</button></div>
+    <div class="mt-6 text-sm text-slate-500">
+      <span id="auth-toggle-text">Δεν έχετε λογαριασμό;</span>
+      <button onclick="app.toggleAuthMode()" id="auth-toggle-btn" class="text-rose-600 font-bold hover:underline ml-1">Εγγραφή</button>
+    </div>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD -->
+<div id="modal-forgot" class="fixed inset-0 bg-slate-50 z-[100] hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in">
+    <div class="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-amber-200 mx-auto mb-4">
+      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+    </div>
+    <h2 class="text-2xl font-bold text-slate-900 tracking-tight mb-2">Επαναφορά κωδικού</h2>
+    <p class="text-sm text-slate-500 mb-6">Βάλε το email σου και θα σου στείλουμε σύνδεσμο για να ορίσεις νέο κωδικό.</p>
+    <form onsubmit="app.handleForgotPassword(event)" class="space-y-4">
+      <input type="email" id="forgot-email" required placeholder="Email" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all text-left">
+      <button type="submit" id="forgot-submit-btn" class="w-full bg-slate-900 hover:bg-slate-800 text-white px-4 py-3.5 rounded-xl font-bold transition-all shadow-md">Αποστολή Συνδέσμου</button>
+    </form>
+    <div class="mt-6 text-sm"><button onclick="app.showLoginForm()" class="text-rose-600 font-bold hover:underline">&#8592; Επιστροφή στη Σύνδεση</button></div>
+  </div>
+</div>
+
+<!-- FORGOT SENT -->
+<div id="modal-forgot-sent" class="fixed inset-0 bg-slate-50 z-[100] hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in">
+    <div class="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-200 mx-auto mb-4">
+      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+    </div>
+    <h2 class="text-2xl font-bold text-slate-900 tracking-tight mb-2">Ελέγξτε το email σας</h2>
+    <p class="text-sm text-slate-500 mb-6">Αν υπάρχει λογαριασμός με αυτό το email, στείλαμε σύνδεσμο επαναφοράς κωδικού.</p>
+    <button onclick="app.showLoginForm()" class="w-full bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-md">Πήγα στη Σύνδεση</button>
+  </div>
+</div>
+
+<!-- NEW PASSWORD -->
+<div id="modal-new-password" class="fixed inset-0 bg-slate-50 z-[100] hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in">
+    <div class="w-16 h-16 bg-rose-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-rose-200 mx-auto mb-4">
+      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+    </div>
+    <h2 class="text-2xl font-bold text-slate-900 tracking-tight mb-2">Ορισμός νέου κωδικού</h2>
+    <p class="text-sm text-slate-500 mb-6">Βάλε τον νέο σου κωδικό παρακάτω.</p>
+    <form onsubmit="app.handleNewPassword(event)" class="space-y-4">
+      <input type="password" id="new-password" required minlength="6" placeholder="Νέος κωδικός (τουλ. 6 χαρακτήρες)" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all text-left">
+      <input type="password" id="new-password-confirm" required minlength="6" placeholder="Επιβεβαίωση νέου κωδικού" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all text-left">
+      <button type="submit" id="new-password-btn" class="w-full bg-rose-600 hover:bg-rose-700 text-white px-4 py-3.5 rounded-xl font-bold transition-all shadow-md shadow-rose-200">Αποθήκευση Νέου Κωδικού</button>
+    </form>
+  </div>
+</div>
+
+<!-- VERIFY EMAIL -->
+<div id="modal-verify" class="fixed inset-0 bg-slate-50 z-[100] hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in">
+    <div class="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-200 mx-auto mb-4">
+      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+    </div>
+    <h2 class="text-2xl font-bold text-slate-900 tracking-tight mb-2">Ελέγξτε το email σας</h2>
+    <p class="text-sm text-slate-500 mb-6">Στείλαμε σύνδεσμο επιβεβαίωσης στο <span id="verify-email" class="font-bold text-slate-700"></span>.<br>Πατήστε τον για να ενεργοποιηθεί ο λογαριασμός σας.</p>
+    <button onclick="app.resendVerification()" id="resend-btn" class="w-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-3 rounded-xl font-bold transition-all mb-3">Δεν έλαβα email — Επαναποστολή</button>
+    <button onclick="app.showLoginForm()" class="w-full bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-md">Πήγα στη Σύνδεση</button>
+  </div>
+</div>
+
+<!-- VERIFIED SUCCESS -->
+<div id="modal-verified" class="fixed inset-0 bg-slate-50 z-[100] hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in">
+    <div class="w-16 h-16 bg-rose-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-rose-200 mx-auto mb-4">
+      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+    </div>
+    <h2 class="text-2xl font-bold text-slate-900 tracking-tight mb-2">Το email επιβεβαιώθηκε!</h2>
+    <p class="text-sm text-slate-500 mb-6">Ο λογαριασμός σας ενεργοποιήθηκε επιτυχώς.<br>Συνδέσου για να ξεκινήσεις.</p>
+    <button onclick="app.showLoginForm()" class="w-full bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-md shadow-rose-200">Σύνδεση</button>
+  </div>
+</div>
+
+<!-- APP CONTAINER -->
+<div id="app" class="min-h-screen font-sans hidden">
+  <nav class="bg-white border-b border-slate-200 sticky top-0 z-50 no-print">
+    <div class="max-w-7xl mx-auto px-3 md:px-6 lg:px-8">
+      <div class="flex justify-between h-14 md:h-16 items-center">
+        <div class="flex items-center gap-2 md:gap-3">
+          <div class="w-9 h-9 md:w-10 md:h-10 bg-rose-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-rose-200">G</div>
+          <div class="mobile-hide"><h1 class="text-lg md:text-xl font-bold text-slate-900 tracking-tight">The Guest List</h1><p class="text-[10px] md:text-xs text-slate-500 -mt-1">theguestlist.gr</p></div>
+        </div>
+        <div class="flex items-center gap-1 md:gap-3">
+          <span id="user-plan" class="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full mobile-hide">Free</span>
+          <button onclick="app.openProfile()" class="text-slate-500 font-semibold text-xs md:text-sm hover:text-slate-800 transition mobile-hide" id="btn-profile">Προφίλ</button>
+          <button onclick="app.logout()" class="text-slate-400 font-semibold text-xs md:text-sm hover:text-slate-700 transition">Έξοδος</button>
+          <button id="btn-admin" onclick="app.toggleAdminView()" class="hidden bg-slate-900 text-white px-3 py-2 rounded-xl font-semibold text-xs md:text-sm transition-all ml-1 shadow-md touch-btn">Admin</button>
+          <button onclick="app.createEvent()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 md:px-5 py-2 md:py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-all shadow-lg shadow-rose-200 flex items-center gap-1 touch-btn">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            <span class="mobile-hide">Νέα Εκδήλωση</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div id="view-client">
+    <main class="max-w-7xl mx-auto px-3 md:px-6 lg:px-8 py-4 md:py-8">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-8 no-print">
+        <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 mobile-card">
+          <div class="flex items-center justify-between mb-2"><span class="text-slate-500 text-xs md:text-sm font-medium">Καλεσμένοι</span><div class="w-8 h-8 md:w-10 md:h-10 bg-rose-50 rounded-xl flex items-center justify-center text-lg md:text-xl">👥</div></div>
+          <p class="text-2xl md:text-3xl font-bold text-slate-900" id="stat-total">0</p>
+          <p class="text-[10px] md:text-sm text-slate-400 mt-1">άτομα</p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 mobile-card">
+          <div class="flex items-center justify-between mb-2"><span class="text-slate-500 text-xs md:text-sm font-medium">Επιβεβαιωμένοι</span><div class="w-8 h-8 md:w-10 md:h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-lg md:text-xl">✅</div></div>
+          <p class="text-2xl md:text-3xl font-bold text-emerald-600" id="stat-confirmed">0</p>
+          <p class="text-[10px] md:text-sm text-slate-400 mt-1">θα έρθουν</p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 mobile-card">
+          <div class="flex items-center justify-between mb-2"><span class="text-slate-500 text-xs md:text-sm font-medium">Εκκρεμεί</span><div class="w-8 h-8 md:w-10 md:h-10 bg-amber-50 rounded-xl flex items-center justify-center text-lg md:text-xl">⏳</div></div>
+          <p class="text-2xl md:text-3xl font-bold text-amber-600" id="stat-pending">0</p>
+          <p class="text-[10px] md:text-sm text-slate-400 mt-1">αναμονή</p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 mobile-card">
+          <div class="flex items-center justify-between mb-2"><span class="text-slate-500 text-xs md:text-sm font-medium">Εκδηλώσεις</span><div class="w-8 h-8 md:w-10 md:h-10 bg-blue-50 rounded-xl flex items-center justify-center text-lg md:text-xl">📅</div></div>
+          <p class="text-2xl md:text-3xl font-bold text-blue-600" id="stat-events">0</p>
+          <p class="text-[10px] md:text-sm text-slate-400 mt-1">ενεργές</p>
+        </div>
+      </div>
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-4 md:mb-6 no-print"><h2 class="text-xl md:text-2xl font-bold text-slate-900">Οι Εκδηλώσεις σας</h2></div>
+        <div id="events-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"></div>
+      </div>
+    </main>
+  </div>
+
+  <div id="view-admin" class="hidden">
+    <main class="max-w-7xl mx-auto px-3 md:px-6 lg:px-8 py-4 md:py-8">
+      <div class="flex items-center justify-between mb-6">
+        <div><h2 class="text-2xl md:text-3xl font-bold text-slate-900">🎛️ Control Room</h2><p class="text-slate-500 text-sm mt-1">Πλήρης έλεγχος της πλατφόρμας</p></div>
+        <button onclick="app.toggleAdminView()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl font-semibold text-sm transition touch-btn">&#8592; Επιστροφή</button>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
+        <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 mobile-card"><div class="flex items-center justify-between mb-2"><span class="text-slate-500 text-xs font-medium">Χρήστες</span><div class="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center text-lg">👥</div></div><p class="text-2xl md:text-3xl font-bold text-slate-900" id="admin-total-users">0</p></div>
+        <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 mobile-card"><div class="flex items-center justify-between mb-2"><span class="text-slate-500 text-xs font-medium">Events Σήμερα</span><div class="w-8 h-8 bg-rose-50 rounded-xl flex items-center justify-center text-lg">📅</div></div><p class="text-2xl md:text-3xl font-bold text-rose-600" id="admin-events-today">0</p></div>
+        <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 mobile-card"><div class="flex items-center justify-between mb-2"><span class="text-slate-500 text-xs font-medium">Καλεσμένοι</span><div class="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center text-lg">🎉</div></div><p class="text-2xl md:text-3xl font-bold text-emerald-600" id="admin-total-guests">0</p></div>
+        <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-slate-100 mobile-card"><div class="flex items-center justify-between mb-2"><span class="text-slate-500 text-xs font-medium">Premium</span><div class="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center text-lg">⭐</div></div><p class="text-2xl md:text-3xl font-bold text-amber-600" id="admin-premium-users">0</p></div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+        <div class="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-lg md:text-xl font-bold text-slate-900">👥 Χρήστες</h3>
+          <div class="flex gap-2">
+            <input type="text" id="admin-user-search" placeholder="Αναζήτηση..." oninput="app.filterAdminUsers()" class="px-3 py-2 rounded-lg border border-slate-200 focus:border-rose-500 outline-none text-sm w-40 md:w-auto">
+            <button onclick="app.refreshAdminData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-sm font-semibold transition touch-btn">🔄</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs md:text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="px-3 md:px-6 py-3 font-semibold">Email</th><th class="px-3 md:px-6 py-3 font-semibold mobile-hide">Εγγραφή</th><th class="px-3 md:px-6 py-3 font-semibold">Πλάνο</th><th class="px-3 md:px-6 py-3 font-semibold">Credits</th><th class="px-3 md:px-6 py-3 font-semibold">Events</th><th class="px-3 md:px-6 py-3 font-semibold">Guests</th><th class="px-3 md:px-6 py-3 font-semibold text-right">Ενέργειες</th></tr></thead><tbody id="admin-users-table" class="divide-y divide-slate-100"></tbody></table></div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+        <div class="p-4 md:p-6 border-b border-slate-100"><h3 class="text-lg md:text-xl font-bold text-slate-900">📊 Δραστηριότητα</h3></div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs md:text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="px-3 md:px-6 py-3 font-semibold">Χρήστης</th><th class="px-3 md:px-6 py-3 font-semibold">Ενέργεια</th><th class="px-3 md:px-6 py-3 font-semibold mobile-hide">Λεπτομέρειες</th><th class="px-3 md:px-6 py-3 font-semibold mobile-hide">Ώρα</th></tr></thead><tbody id="admin-activity-table" class="divide-y divide-slate-100"></tbody></table></div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="p-4 md:p-6 border-b border-slate-100"><h3 class="text-lg md:text-xl font-bold text-slate-900">💰 Ιστορικό Credits</h3></div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs md:text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="px-3 md:px-6 py-3 font-semibold">Χρήστης</th><th class="px-3 md:px-6 py-3 font-semibold">Ποσό</th><th class="px-3 md:px-6 py-3 font-semibold">Λόγος</th><th class="px-3 md:px-6 py-3 font-semibold">Admin</th><th class="px-3 md:px-6 py-3 font-semibold">Ημερομηνία</th></tr></thead><tbody id="admin-transactions-table" class="divide-y divide-slate-100"></tbody></table></div>
+      </div>
+    </main>
+  </div>
+
+  <nav class="bottom-nav md:hidden no-print">
+    <div class="flex justify-around items-center h-14">
+      <button onclick="app.showClientView()" class="flex flex-col items-center justify-center text-rose-600 touch-btn w-full h-full">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+        <span class="text-[10px] font-medium">Αρχική</span>
+      </button>
+      <button onclick="app.createEvent()" class="flex flex-col items-center justify-center text-slate-400 touch-btn w-full h-full">
+        <div class="w-10 h-10 bg-rose-600 rounded-full flex items-center justify-center text-white shadow-lg -mt-4"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg></div>
+      </button>
+      <button id="btn-admin-mobile" onclick="app.toggleAdminView()" class="hidden flex flex-col items-center justify-center text-slate-400 touch-btn w-full h-full">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        <span class="text-[10px] font-medium">Admin</span>
+      </button>
+    </div>
+  </nav>
+</div>
+
+<!-- MODAL: New/Edit Event -->
+<div id="modal-event" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-in">
+    <div class="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-lg md:text-xl font-bold text-slate-900" id="event-modal-title">Νέα Εκδήλωση</h3>
+      <button onclick="app.closeModal('modal-event')" class="text-slate-400 hover:text-slate-600 transition-colors touch-btn p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    </div>
+    <form onsubmit="app.saveEvent(event)" class="p-4 md:p-6 space-y-4">
+      <input type="hidden" id="event-id">
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Τύπος</label>
+        <div class="grid grid-cols-3 gap-2 md:gap-3">
+          <button type="button" onclick="app.selectEventType('wedding')" class="event-type-btn p-3 md:p-4 rounded-xl border-2 border-slate-200 hover:border-rose-400 transition-all text-center group touch-btn" data-type="wedding"><div class="text-2xl md:text-3xl mb-1">💒</div><div class="text-xs md:text-sm font-semibold text-slate-700">Γάμος</div></button>
+          <button type="button" onclick="app.selectEventType('baptism')" class="event-type-btn p-3 md:p-4 rounded-xl border-2 border-slate-200 hover:border-blue-400 transition-all text-center group touch-btn" data-type="baptism"><div class="text-2xl md:text-3xl mb-1">🕊️</div><div class="text-xs md:text-sm font-semibold text-slate-700">Βάφτιση</div></button>
+          <button type="button" onclick="app.selectEventType('party')" class="event-type-btn p-3 md:p-4 rounded-xl border-2 border-slate-200 hover:border-purple-400 transition-all text-center group touch-btn" data-type="party"><div class="text-2xl md:text-3xl mb-1">🎉</div><div class="text-xs md:text-sm font-semibold text-slate-700">Πάρτυ</div></button>
+        </div>
+        <input type="hidden" id="event-type-selected" value="wedding">
+      </div>
+      <div><label class="block text-sm font-semibold text-slate-700 mb-2">Όνομα Εκδήλωσης</label><input type="text" id="event-name" required placeholder="π.χ. Γάμος Μαρίας & Γιώργου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Ημερομηνία</label><input type="date" id="event-date" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Ώρα</label><input type="time" id="event-time" step="60" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"><p class="text-xs text-slate-400 mt-1">24ωρη μορφή (π.χ. 19:30)</p></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Τοποθεσία Δεξίωσης</label><input type="text" id="event-location" placeholder="Κτήμα/Αίθουσα" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
+        <div id="church-field"><label class="block text-sm font-semibold text-slate-700 mb-2">Τοποθεσία Μυστηρίου (Ναός)</label><input type="text" id="event-church" placeholder="Ι.Ν. Αγίου Νικολάου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none transition-all"></div>
+      </div>
+      <!-- WEDDING/BAPTISM FIELDS -->
+      <div id="wedding-fields" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label id="label-groom-family" class="text-xs font-semibold text-slate-700">Οικογένεια Γαμπρού</label><input type="text" id="event-groom-family" placeholder="π.χ. Οικογένεια Παπαδόπουλου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+          <div><label id="label-bride-family" class="text-xs font-semibold text-slate-700">Οικογένεια Νύφης</label><input type="text" id="event-bride-family" placeholder="π.χ. Οικογένεια Ανδρέου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3" id="koubaroi-row">
+          <div><label id="label-koubaros" class="text-xs font-semibold text-slate-700">Κουμπάρος</label><input type="text" id="event-koubaros" placeholder="Όνομα κουμπάρου" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+          <div><label id="label-koubara" class="text-xs font-semibold text-slate-700">Κουμπάρα</label><input type="text" id="event-koubara" placeholder="Όνομα κουμπάρας" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+        </div>
+      </div>
+      <!-- BAPTISM FIELDS -->
+      <div id="baptism-fields" class="hidden space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="text-xs font-semibold text-slate-700">Νονός</label><input type="text" id="event-nounos" placeholder="Όνομα νονού" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+          <div><label class="text-xs font-semibold text-slate-700">Νονά</label><input type="text" id="event-nouna" placeholder="Όνομα νονάς" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Υπεύθυνος Επικοινωνίας</label><input type="text" id="event-contact-name" placeholder="Όνομα" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all"></div>
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Τηλέφωνο Επικοινωνίας</label><input type="tel" id="event-contact-phone" placeholder="69xxxxxxxx" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all"></div>
+      </div>
+      <div class="border-t border-slate-100 pt-4">
+        <h4 class="text-sm font-bold text-slate-700 mb-2">🌐 Event Website (προαιρετικά)</h4>
+        <div class="space-y-3">
+          <div><label class="text-xs text-slate-500">Πρόγραμμα Ημέρας (μία γραμμή ανά δραστηριότητα)</label><textarea id="event-program" rows="3" placeholder="17:00 – Τελετή&#10;18:00 – Συγχαρητήρια&#10;20:45 – Πρώτος Χορός" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm resize-none"></textarea></div>
+          <div><label class="text-xs text-slate-500">IBAN Λίστας Δώρων</label><input type="text" id="event-iban" placeholder="GRxx xxxx xxxx xxxx xxxx xxxx xxx" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"><p class="text-xs text-amber-600 mt-1">⚠️ Το IBAN είναι δημόσια ορατό σε όποιον ανοίξει το link της πρόσκλησης.</p></div>
+          <div class="flex items-center gap-2 mt-2"><input type="checkbox" id="event-show-iban" class="w-4 h-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500" checked><label class="text-xs text-slate-600">Εμφάνιση IBAN στο Event Website</label></div>
+          <div><label class="text-xs text-slate-500">Spotify Playlist ID</label><input type="text" id="event-spotify" placeholder="π.χ. 37i9dQZF1DX..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+          <div><label class="text-xs text-slate-500">Custom URL Slug (π.χ. giorgos-kai-maria)</label><input type="text" id="event-slug" placeholder="giorgos-kai-maria" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none transition-all text-sm"></div>
+        </div>
+      </div>
+      <div class="pt-2 border-t border-slate-100 flex gap-3">
+        <button type="button" onclick="app.closeModal('modal-event')" class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors touch-btn">Ακύρωση</button>
+        <button type="submit" id="event-submit-btn" class="flex-1 px-4 py-3 rounded-xl bg-rose-600 text-white font-semibold hover:bg-rose-700 transition-colors shadow-lg shadow-rose-200 touch-btn">Δημιουργία</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Event Detail -->
+<div id="modal-detail" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-0 md:p-4">
+  <div class="bg-white md:rounded-2xl shadow-2xl max-w-5xl w-full h-[100dvh] md:h-auto md:max-h-[90vh] overflow-y-auto animate-in">
+    <div class="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white sticky top-0 z-10">
+      <div><h3 class="text-xl md:text-2xl font-bold text-slate-900" id="detail-title">Εκδήλωση</h3><p class="text-xs md:text-sm text-slate-500 mt-1" id="detail-subtitle"></p></div>
+      <div class="flex items-center gap-2">
+        <button onclick="app.printEvent()" class="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors touch-btn" title="Εκτύπωση"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg></button>
+        <button onclick="app.exportEventCSV()" class="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors touch-btn" title="Εξαγωγή CSV"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></button>
+        <button onclick="app.closeModal('modal-detail')" class="text-slate-400 hover:text-slate-600 transition-colors touch-btn p-2 bg-white rounded-full shadow-sm"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+      </div>
+    </div>
+    <div class="p-4 md:p-6">
+     <div class="flex flex-wrap gap-2 mb-4 md:mb-6 no-print border-b border-slate-100 pb-4">
+        <button onclick="app.setTab('guests')" id="tab-guests" class="px-4 md:px-5 py-2.5 rounded-xl text-sm font-bold bg-slate-900 text-white shadow-md transition-all whitespace-nowrap touch-btn">Καλεσμένοι</button>
+        <button onclick="app.setTab('tables')" id="tab-tables" class="px-4 md:px-5 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap touch-btn">Τραπέζια</button>
+        <button onclick="app.setTab('rsvp')" id="tab-rsvp" class="px-4 md:px-5 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap touch-btn">RSVP</button>
+        <button onclick="app.setTab('reception')" id="tab-reception" class="px-4 md:px-5 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap touch-btn">Δεξίωση</button>
+        <button onclick="app.setTab('edit')" id="tab-edit" class="px-4 md:px-5 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap touch-btn">✏️ Στοιχεία & Website</button>
+        <button onclick="app.setTab('photos')" id="tab-photos" class="px-4 md:px-5 py-2.5 rounded-xl text-sm font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap touch-btn">📸 Φωτογραφίες</button>
+        <button onclick="app.showDeleteConfirm()" class="ml-auto px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-all touch-btn">🗑️ Διαγραφή</button>
+      </div>
+      <div class="print-only mb-8 text-center"><h1 class="text-3xl font-bold text-slate-900 mb-2" id="print-title"></h1><p class="text-lg text-slate-600" id="print-subtitle"></p><p class="text-sm text-slate-400 mt-1">theguestlist.gr</p></div>
+
+      <div id="panel-guests" class="space-y-4">
+        <div class="flex justify-between items-center bg-rose-50 p-3 md:p-4 rounded-xl border border-rose-100">
+          <div><h4 class="font-bold text-rose-900 text-sm md:text-base">Όριο Καλεσμένων</h4><p class="text-xs md:text-sm text-rose-700" id="guest-count-display">0 προσκλήσεις / 0 άτομα</p></div>
+          <button onclick="app.upgradePlan()" class="bg-rose-600 text-white px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-bold shadow-sm touch-btn">Ξεκλείδωμα</button>
+        </div>
+        <form onsubmit="app.saveGuest(event)" class="bg-white rounded-xl border-2 border-slate-200 p-3 md:p-4 mb-4 shadow-sm">
+          <div class="grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-3">
+            <input type="text" id="g-name" required placeholder="Ονοματεπώνυμο *" class="col-span-2 px-3 py-2.5 rounded-lg border border-slate-200 focus:border-rose-500 outline-none text-sm">
+            <div class="flex flex-col">
+              <label for="g-party" class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">Άτομα</label>
+              <input type="number" id="g-party" min="1" max="20" value="1" class="px-3 py-2 rounded-lg border border-slate-200 focus:border-rose-500 outline-none text-sm w-full">
+            </div>
+            <input type="tel" id="g-phone" placeholder="Τηλέφωνο" class="px-3 py-2.5 rounded-lg border border-slate-200 focus:border-rose-500 outline-none text-sm">
+            <input type="email" id="g-email" placeholder="Email" class="px-3 py-2.5 rounded-lg border border-slate-200 focus:border-rose-500 outline-none text-sm">
+            <select id="g-side" class="px-3 py-2.5 rounded-lg border border-slate-200 focus:border-rose-500 outline-none bg-white text-sm"><option value="">Πλευρά</option><option value="groom">Γαμπρού</option><option value="bride">Νύφης</option></select>
+            <select id="g-category" class="px-3 py-2.5 rounded-lg border border-slate-200 focus:border-rose-500 outline-none bg-white text-sm"><option value="family">Οικογένεια</option><option value="friends">Φίλοι</option><option value="koubaroi">Κουμπάροι</option><option value="other">Άλλο</option></select>
+          </div>
+          <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="g-family" class="w-4 h-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"><span class="text-xs text-slate-600">Εμφάνιση ως «Οικογένεια <span id="family-preview" class="font-bold">...</span>» (για προσκλητήρια)</span></label>
+            <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg font-bold text-sm transition-all touch-btn">+ Προσθήκη</button>
+          </div>
+        </form>
+        <div class="flex flex-wrap gap-2 mb-4 no-print">
+          <label class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-3 py-2 rounded-lg text-xs md:text-sm font-bold cursor-pointer transition touch-btn flex items-center gap-1">📥 Import Excel<input type="file" id="guest-import-file" accept=".csv,.xlsx,.xls" class="hidden" onchange="app.importGuestsFromExcel(event)"></label>
+          <button onclick="app.exportGuestsToExcel()" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition touch-btn flex items-center gap-1">📤 Export Excel</button>
+          <button onclick="app.downloadExcelTemplate()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition touch-btn flex items-center gap-1">📋 Πρότυπο</button>
+          <button onclick="app.openCheckinScanner()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition touch-btn flex items-center gap-1">📷 Σάρωση Check-in</button>
+          <button onclick="app.printCheckinList()" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition touch-btn flex items-center gap-1">🖨️ Εκτύπωση Λίστας</button>
+          <button onclick="app.downloadAllQRCodes()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition touch-btn flex items-center gap-1">📱 QR Codes Όλων</button>
+          <button onclick="app.sendBulkSMS()" class="bg-sky-100 hover:bg-sky-200 text-sky-700 px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition touch-btn flex items-center gap-1">💬 SMS Πρόσκληση</button>
+          <button onclick="app.sendBulkEmail()" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition touch-btn flex items-center gap-1">📧 Μαζικό Email</button>
+          <button onclick="app.exportTaxList()" class="bg-teal-100 hover:bg-teal-200 text-teal-700 px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition touch-btn flex items-center gap-1">📋 Λίστα Δήλωσης</button>
+          <button onclick="app.refreshCurrentEvent()" class="bg-amber-100 hover:bg-amber-200 text-amber-700 px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition touch-btn flex items-center gap-1">🔄 Ανανέωση</button>
+        </div>
+        <div class="bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs md:text-sm">
+              <thead><tr class="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider"><th class="px-3 md:px-4 py-3">Όνομα</th><th class="px-3 md:px-4 py-3">Πλευρά</th><th class="px-3 md:px-4 py-3">Ομάδα</th><th class="px-3 md:px-4 py-3">Τραπέζι</th><th class="px-3 md:px-4 py-3">RSVP</th><th class="px-3 md:px-4 py-3">Check-in</th><th class="px-3 md:px-4 py-3 text-right no-print">Ενέργειες</th></tr></thead>
+              <tbody id="guests-table-body" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="panel-tables" class="hidden space-y-4">
+        <form onsubmit="app.addTable(event)" class="flex gap-2 md:gap-3 mb-4 p-3 md:p-4 bg-slate-50 rounded-xl border border-slate-200">
+          <input type="text" id="table-name-input" required placeholder="Όνομα τραπεζιού" class="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 outline-none text-sm">
+          <input type="number" id="table-capacity" required placeholder="Άτομα" min="1" max="20" class="w-20 md:w-32 px-3 py-2.5 rounded-xl border border-slate-200 outline-none text-sm">
+          <button type="submit" class="bg-slate-900 text-white px-4 md:px-6 py-2.5 rounded-xl font-bold text-sm touch-btn">Προσθήκη</button>
+        </form>
+        <div class="mb-4">
+          <button type="button" onclick="app.runAutoReseat()" class="w-full md:w-auto bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md touch-btn flex items-center justify-center gap-2">
+            ✨ Αυτόματη Καραμπόλα (Auto-Reseat)
+          </button>
+        </div>
+        <div id="tables-container" class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4"></div>
+      </div>
+
+      <div id="panel-rsvp" class="hidden space-y-4">
+        <div class="grid grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6 no-print">
+          <div class="bg-emerald-50 rounded-xl p-3 md:p-4 border border-emerald-100 text-center"><p class="text-xl md:text-2xl font-bold text-emerald-600" id="rsvp-yes">0</p><p class="text-xs md:text-sm text-emerald-700 font-medium">Θα έρθουν</p></div>
+          <div class="bg-red-50 rounded-xl p-3 md:p-4 border border-red-100 text-center"><p class="text-xl md:text-2xl font-bold text-red-600" id="rsvp-no">0</p><p class="text-xs md:text-sm text-red-700 font-medium">Δεν έρχονται</p></div>
+          <div class="bg-amber-50 rounded-xl p-3 md:p-4 border border-amber-100 text-center"><p class="text-xl md:text-2xl font-bold text-amber-600" id="rsvp-maybe">0</p><p class="text-xs md:text-sm text-amber-700 font-medium">Αναμονή</p></div>
+        </div>
+        <div id="rsvp-list" class="space-y-2"></div>
+      </div>
+
+      <div id="panel-reception" class="hidden space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 no-print">
+          <button onclick="app.printCateringList()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1">
+            🖨️ Εκτύπωση Catering / Maître
+          </button>
+        </div>
+        <div id="reception-list" class="space-y-2"></div>
+      </div>
+
+      <div id="panel-edit" class="hidden space-y-4">
+        <div class="bg-blue-50 rounded-xl p-4 border border-blue-200 mb-4"><p class="text-sm text-blue-800">✏️ Επεξεργάστε τα στοιχεία της εκδήλωσης και του Event Website. Οι αλλαγές ενημερώνονται αμέσως.</p></div>
+        <form onsubmit="app.updateEventDetails(event)" class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-xs font-semibold text-slate-700">Όνομα</label><input type="text" id="edit-name" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"></div>
+            <div><label class="text-xs font-semibold text-slate-700">Ημερομηνία</label><input type="date" id="edit-date" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"></div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-xs font-semibold text-slate-700">Δεξίωση</label><input type="text" id="edit-location" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"></div>
+            <div id="edit-church-wrap"><label class="text-xs font-semibold text-slate-700">Ναός</label><input type="text" id="edit-church" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"></div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-xs font-semibold text-slate-700">Υπεύθυνος</label><input type="text" id="edit-contact-name" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"></div>
+            <div><label class="text-xs font-semibold text-slate-700">Τηλ. Επικοινωνίας</label><input type="tel" id="edit-contact-phone" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"></div>
+          </div>
+          <div><label class="text-xs font-semibold text-slate-700">Πρόγραμμα (μία γραμμή ανά δραστηριότητα)</label><textarea id="edit-program" rows="3" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm resize-none"></textarea></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-xs font-semibold text-slate-700">IBAN Δώρων</label><input type="text" id="edit-iban" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"><p class="text-xs text-amber-600 mt-1">⚠️ Δημόσια ορατό στο link της πρόσκλησης.</p></div>
+            <div><label class="text-xs font-semibold text-slate-700">Spotify Playlist ID</label><input type="text" id="edit-spotify" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"></div>
+          </div>
+          <div><label class="text-xs font-semibold text-slate-700">Custom Slug (π.χ. giorgos-kai-maria)</label><input type="text" id="edit-slug" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm"></div>
+          <div class="flex gap-3 pt-2">
+            <button type="submit" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-xl font-bold text-sm transition-all shadow-md touch-btn">💾 Αποθήκευση Αλλαγών</button>
+            <button type="button" onclick="app.previewEventWebsite()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-bold text-sm transition-all shadow-md touch-btn">🌐 Προβολή Event Website</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- PHOTOS TAB -->
+      <div id="panel-photos" class="hidden space-y-4">
+        <div class="flex justify-between items-center flex-wrap gap-2 mb-4">
+          <h4 class="font-bold text-slate-900 text-lg">📸 Photo Album</h4>
+          <div class="flex gap-2">
+            <button onclick="app.openUploadModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-all shadow-sm">📤 Ανέβασμα</button>
+            <button onclick="app.openCoverSelector()" class="bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-600 transition-all shadow-sm">🖼️ Εξώφυλλο</button>
+          </div>
+        </div>
+        <div id="photos-gallery" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
+        <div id="photos-empty" class="hidden text-center py-12 text-slate-400">
+          <div class="text-4xl mb-2">📸</div>
+          <p>Δεν υπάρχουν φωτογραφίες ακόμα.</p>
+          <p class="text-sm">Ανέβασε τις πρώτες σου φωτογραφίες!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Import Preview -->
+<div id="modal-import" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-in">
+    <div class="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-lg md:text-xl font-bold text-slate-900">📥 Προεπισκόπηση Εισαγωγής</h3>
+      <button onclick="app.closeModal('modal-import')" class="text-slate-400 hover:text-slate-600 transition-colors touch-btn p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    </div>
+    <div class="p-4 md:p-6">
+      <div class="overflow-x-auto mb-4"><table class="w-full text-left text-xs md:text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="px-3 py-2">#</th><th class="px-3 py-2">Όνομα</th><th class="px-3 py-2">Τηλέφωνο</th><th class="px-3 py-2">Email</th><th class="px-3 py-2">Άτομα</th><th class="px-3 py-2">Πλευρά</th><th class="px-3 py-2">Ομάδα</th></tr></thead><tbody id="import-preview-body" class="divide-y divide-slate-100"></tbody></table></div>
+      <div class="flex gap-3 justify-end">
+        <button onclick="app.closeModal('modal-import')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors touch-btn">Ακύρωση</button>
+        <button onclick="app.confirmImport()" class="px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors shadow-md touch-btn">✅ Επιβεβαίωση Εισαγωγής</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Check-in Scanner -->
+<div id="modal-checkin" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-in">
+    <div class="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-lg md:text-xl font-bold text-slate-900">📷 Σάρωση QR Check-in</h3>
+      <button onclick="app.closeCheckinScanner()" class="text-slate-400 hover:text-slate-600 transition-colors touch-btn p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    </div>
+    <div class="p-4 md:p-6 text-center">
+      <div id="qr-reader" style="width:100%;"></div>
+      <div id="qr-result" class="mt-4 hidden"><div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4"><p class="text-emerald-700 font-bold text-lg" id="qr-guest-name"></p><p class="text-emerald-600 text-sm">Check-in επιτυχές!</p></div></div>
+      <button onclick="app.restartScanner()" class="mt-4 bg-slate-900 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all touch-btn">🔄 Επανεκκίνηση Σάρωσης</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Edit Guest (με Τραπέζια) -->
+<div id="modal-edit-guest" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-in">
+    <div class="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-lg md:text-xl font-bold text-slate-900">✏️ Επεξεργασία Καλεσμένου</h3>
+      <button onclick="app.closeModal('modal-edit-guest')" class="text-slate-400 hover:text-slate-600 transition-colors touch-btn p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    </div>
+    <form onsubmit="app.updateGuest(event)" class="p-4 md:p-6 space-y-4">
+      <input type="hidden" id="edit-guest-id">
+      <div><label class="block text-sm font-semibold text-slate-700 mb-2">Ονοματεπώνυμο *</label><input type="text" id="edit-g-name" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Άτομα</label><input type="number" id="edit-g-party" min="1" max="20" value="1" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Πλευρά</label><select id="edit-g-side" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none bg-white"><option value="">—</option><option value="groom">Γαμπρού</option><option value="bride">Νύφης</option></select></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Τηλέφωνο</label><input type="tel" id="edit-g-phone" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Email</label><input type="email" id="edit-g-email" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Ομάδα</label><select id="edit-g-category" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none bg-white"><option value="family">Οικογένεια</option><option value="friends">Φίλοι</option><option value="koubaroi">Κουμπάροι</option><option value="other">Άλλο</option></select></div>
+        <div><label class="block text-sm font-semibold text-slate-700 mb-2">Τραπέζι</label><select id="edit-g-table" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none bg-white"><option value="">— Χωρίς τραπέζι —</option></select></div>
+      </div>
+      <!-- Mini form για νέο τραπέζι (κρυφό αρχικά) -->
+      <div id="edit-g-new-table-form" class="hidden bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
+        <p class="text-xs font-bold text-slate-700">➕ Νέο Τραπέζι</p>
+        <div class="flex gap-2">
+          <input type="text" id="edit-g-new-table-name" placeholder="Όνομα τραπεζιού" class="flex-1 px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm">
+          <input type="number" id="edit-g-new-table-cap" placeholder="Άτομα" min="1" max="20" value="10" class="w-20 px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm">
+          <button type="button" onclick="app.addTableFromGuestEdit()" class="bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-bold">Προσθήκη</button>
+        </div>
+      </div>
+      <button type="button" onclick="app.toggleNewTableForm()" id="edit-g-show-new-table-btn" class="text-xs text-emerald-600 font-bold hover:underline">➕ Προσθήκη νέου τραπεζιού</button>
+      <button type="submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-md touch-btn">💾 Αποθήκευση Αλλαγών</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: SMS History -->
+<div id="modal-sms-history" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-in">
+    <div class="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-lg md:text-xl font-bold text-slate-900">📨 Ιστορικό SMS</h3>
+      <button onclick="app.closeModal('modal-sms-history')" class="text-slate-400 hover:text-slate-600 transition-colors touch-btn p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    </div>
+    <div id="sms-history-content" class="p-4 md:p-6 space-y-3"></div>
+  </div>
+</div>
+
+<!-- MODAL: Delete Confirm -->
+<div id="modal-delete" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-in">
+    <div class="p-4 md:p-6 text-center">
+      <div class="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4"><svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></div>
+      <h3 class="text-xl font-bold text-slate-900 mb-2">Διαγραφή Εκδήλωσης</h3>
+      <p class="text-sm text-slate-500 mb-4">Αυτή η ενέργεια δεν μπορεί να αναιρεθεί. Θα διαγραφούν όλοι οι καλεσμένοι, τραπέζια και δεδομένα.</p>
+      <div class="flex gap-3">
+        <button onclick="app.closeModal('modal-delete')" class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors touch-btn">Ακύρωση</button>
+        <button onclick="app.confirmDeleteEvent()" class="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors shadow-md touch-btn">Διαγραφή</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add Credits -->
+<div id="modal-add-credits" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-in">
+    <div class="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-lg md:text-xl font-bold text-slate-900">💰 Προσθήκη Credits</h3>
+      <button onclick="app.closeModal('modal-add-credits')" class="text-slate-400 hover:text-slate-600 transition-colors touch-btn p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    </div>
+    <form onsubmit="app.confirmAddCredits(event)" class="p-4 md:p-6 space-y-4">
+      <div><label class="block text-sm font-semibold text-slate-700 mb-2">Χρήστης</label><p id="add-credits-user" class="text-sm text-slate-500"></p></div>
+      <div><label class="block text-sm font-semibold text-slate-700 mb-2">Credits</label><input type="number" id="add-credits-amount" required min="1" value="10" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+      <div><label class="block text-sm font-semibold text-slate-700 mb-2">Λόγος</label><input type="text" id="add-credits-reason" required placeholder="π.χ. Πληρωμή" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+      <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-md touch-btn">Προσθήκη Credits</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Profile -->
+<div id="modal-profile" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-in">
+    <div class="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-lg md:text-xl font-bold text-slate-900">👤 Προφίλ Χρήστη</h3>
+      <button onclick="app.closeModal('modal-profile')" class="text-slate-400 hover:text-slate-600 transition-colors touch-btn p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    </div>
+    <form onsubmit="app.saveProfile(event)" class="p-4 md:p-6 space-y-4">
+      <div><label class="block text-sm font-semibold text-slate-700 mb-2">Όνομα</label><input type="text" id="profile-firstname" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+      <div><label class="block text-sm font-semibold text-slate-700 mb-2">Επώνυμο</label><input type="text" id="profile-lastname" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+      <div><label class="block text-sm font-semibold text-slate-700 mb-2">Τηλέφωνο</label><input type="tel" id="profile-phone" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-rose-500 outline-none"></div>
+      <div><label class="block text-sm font-semibold text-slate-700 mb-2">Email</label><input type="email" id="profile-email" disabled class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-500"></div>
+      <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-md touch-btn">Αποθήκευση</button>
+    </form>
+    <div class="p-4 md:p-6 border-t border-slate-100">
+      <button onclick="app.askDeleteAccount()" class="w-full bg-red-50 hover:bg-red-100 text-red-600 px-4 py-3 rounded-xl font-bold transition-all touch-btn">🗑️ Διαγραφή Λογαριασμού</button>
+      <div id="delete-account-confirm" class="hidden mt-3">
+        <p class="text-xs text-red-600 mb-2">Είστε σίγουροι; Θα διαγραφούν ΟΛΑ τα δεδομένα σας.</p>
+        <div class="flex gap-2">
+          <button onclick="app.cancelDeleteAccount()" class="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-semibold">Ακύρωση</button>
+          <button onclick="app.deleteAccount()" class="flex-1 px-3 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">Επιβεβαίωση</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Upload Photos -->
+<div id="modal-upload" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full animate-in">
+    <div class="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-lg md:text-xl font-bold text-slate-900">📤 Ανέβασμα Φωτογραφιών</h3>
+      <button onclick="app.closeModal('modal-upload')" class="text-slate-400 hover:text-slate-600 transition-colors touch-btn p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    </div>
+    <div class="p-4 md:p-6">
+      <div id="upload-zone" class="border-3 border-dashed border-slate-300 rounded-2xl p-10 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-all" onclick="document.getElementById('photo-input').click()">
+        <div class="text-4xl mb-2">📸</div>
+        <p class="text-slate-700 font-semibold">Σύρε ή κάνε κλικ για ανέβασμα</p>
+        <p class="text-slate-400 text-sm mt-1">JPG, PNG, WebP — έως 5MB</p>
+        <input type="file" id="photo-input" multiple accept="image/*" class="hidden" onchange="app.handlePhotoUpload(event)">
+      </div>
+      <div id="upload-limit-warning" class="hidden mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-center">
+        <p class="text-amber-700 text-sm font-medium">⚠️ Free plan: Μέγιστο 5 φωτογραφίες ανά event</p>
+      </div>
+      <div id="upload-progress" class="hidden mt-4">
+        <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-indigo-500 to-pink-500 rounded-full transition-all" id="upload-progress-bar" style="width:0%"></div></div>
+        <p class="text-sm text-slate-500 text-center mt-2" id="upload-status">Ανέβασμα...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Cover Selector -->
+<div id="modal-cover" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-in">
+    <div class="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-lg md:text-xl font-bold text-slate-900">🖼️ Επιλογή Εξωφύλλου</h3>
+      <button onclick="app.closeModal('modal-cover')" class="text-slate-400 hover:text-slate-600 transition-colors touch-btn p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+    </div>
+    <div id="cover-gallery" class="p-4 md:p-6 grid grid-cols-3 gap-3"></div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" class="fixed inset-0 bg-black/95 z-[200] hidden items-center justify-center">
+  <button class="absolute top-4 right-4 w-12 h-12 rounded-full bg-white/15 text-white text-2xl flex items-center justify-center border-0 cursor-pointer" onclick="app.closeLightbox()">&times;</button>
+  <button class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/15 text-white text-xl flex items-center justify-center border-0 cursor-pointer" onclick="app.prevPhoto()">&#10094;</button>
+  <button class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/15 text-white text-xl flex items-center justify-center border-0 cursor-pointer" onclick="app.nextPhoto()">&#10095;</button>
+  <img id="lightbox-img" src="" alt="" class="max-w-[90vw] max-h-[85vh] object-contain rounded-lg">
+</div>
+
+<script>
+const app = {
+  db: null, user: null, isAdmin: false,
+  events: [], guests: [], tables: [],
+  currentEvent: null, currentTab: 'guests', importData: [],
+  turnstileWidget: null, scanner: null,
+  photos: [], photoIndex: 0,
+  refreshInterval: null,
+
+  init() {
+    this.db = supabase.createClient('https://vozfcvludahuvwatfwmy.supabase.co','sb_publishable_DZ-ZKOFhCnCmhdbaLSUG_g_XAH53N1E');
+    this.db.auth.getSession().then(({data:{session}})=>{
+      if(session?.user){this.user=session.user;this.checkIfAdmin().then(()=>this.showApp());}
+      else{document.getElementById('modal-auth').classList.remove('hidden');document.getElementById('modal-auth').classList.add('flex');}
+    });
+    this.db.auth.onAuthStateChange((event,session)=>{
+      if(event==='SIGNED_IN'&&session?.user){this.user=session.user;this.checkIfAdmin().then(()=>this.showApp());}
+      else if(event==='SIGNED_OUT')location.reload();
+    });
+    const hash=window.location.hash;
+    if(hash.includes('type=recovery'))this.showNewPasswordForm();
+    else if(hash.includes('type=signup')||hash.includes('type=email_change'))this.showVerifiedModal();
+    if('serviceWorker' in navigator)navigator.serviceWorker.register('data:text/javascript;base64,'+btoa(`self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))));`)).catch(()=>{});
+  },
+
+  async sendEmailInvitation(guestEmail, guestName, eventName, eventDate, eventTime, eventLocation, coverPhoto, inviteLink) {
+    try {
+      const response = await fetch('ajax.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send_email',
+          email: guestEmail,
+          name: guestName,
+          event_name: eventName,
+          event_date: eventDate,
+          event_time: eventTime,
+          event_location: eventLocation,
+          cover_photo: coverPhoto,
+          link: inviteLink
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert('Το email στάλθηκε με επιτυχία!');
+      } else {
+        alert('Σφάλμα: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Network error:', error);
+      alert('Προέκυψε πρόβλημα σύνδεσης με τον server.');
+    }
   },
 
   async sendBulkEmail() {
@@ -44,6 +716,10 @@ async sendEmailInvitation(guestEmail, guestName, eventName, inviteLink) {
             email: g.email,
             name: g.name,
             event_name: this.currentEvent.name,
+            event_date: this.currentEvent.date || '',
+            event_time: this.currentEvent.event_time || '',
+            event_location: this.currentEvent.location || '',
+            cover_photo: this.currentEvent.cover_photo_url || '',
             link: inviteLink
           })
         });
@@ -57,3 +733,819 @@ async sendEmailInvitation(guestEmail, guestName, eventName, inviteLink) {
   },
 
   toggleAuthMode(){
+    const sf=document.getElementById('signup-fields'),btn=document.getElementById('auth-submit-btn'),txt=document.getElementById('auth-toggle-text'),tbtn=document.getElementById('auth-toggle-btn'),fr=document.getElementById('forgot-password-row'),tc=document.getElementById('turnstile-container');
+    const isSignup=sf.classList.contains('hidden');
+    if(isSignup){sf.classList.remove('hidden');btn.textContent='Εγγραφή';txt.textContent='Έχετε ήδη λογαριασμό;';tbtn.textContent='Σύνδεση';fr.classList.add('hidden');tc.classList.remove('hidden');this.renderTurnstile();}
+    else{sf.classList.add('hidden');btn.textContent='Σύνδεση';txt.textContent='Δεν έχετε λογαριασμό;';tbtn.textContent='Εγγραφή';fr.classList.remove('hidden');tc.classList.add('hidden');this.resetTurnstile();}
+  },
+  renderTurnstile(){if(this.turnstileWidget)return;const el=document.getElementById('turnstile-container');el.innerHTML='';if(window.turnstile)this.turnstileWidget=turnstile.render(el,{sitekey:'0x4AAAAAAD_HwiQi0UnaMlno',callback:(token)=>{el.dataset.token=token;}});},
+  resetTurnstile(){if(this.turnstileWidget&&window.turnstile){turnstile.remove(this.turnstileWidget);this.turnstileWidget=null;}document.getElementById('turnstile-container').dataset.token='';},
+
+  async handleAuth(e){
+    e.preventDefault();const btn=document.getElementById('auth-submit-btn');btn.disabled=true;btn.textContent='Φόρτωση...';
+    const email=document.getElementById('auth-email').value.trim(),password=document.getElementById('auth-password').value;
+    const isSignup=!document.getElementById('signup-fields').classList.contains('hidden');
+    try{
+      if(isSignup){
+        const turnstileToken=document.getElementById('turnstile-container').dataset.token;
+        if(!turnstileToken){alert('Περιμένετε τον έλεγχο ασφαλείας...');return;}
+        const {data:vf,error:ve}=await this.db.functions.invoke('verify-turnstile',{body:{token:turnstileToken}});
+        if(ve||!vf?.success){alert('Ο έλεγχος ασφαλείας απέτυχε. Δοκιμάστε ξανά.');return;}
+        const firstname=document.getElementById('auth-firstname').value.trim(),lastname=document.getElementById('auth-lastname').value.trim(),phone=document.getElementById('auth-phone').value.trim();
+        if(!firstname||!lastname){alert('Συμπληρώστε όνομα και επώνυμο');return;}
+        const {data,error}=await this.db.auth.signUp({email,password,options:{data:{firstname,lastname,phone}}});
+        if(error)throw error;
+        document.getElementById('verify-email').textContent=email;
+        document.getElementById('modal-auth').classList.add('hidden');document.getElementById('modal-auth').classList.remove('flex');
+        document.getElementById('modal-verify').classList.remove('hidden');document.getElementById('modal-verify').classList.add('flex');
+      }else{
+        const {data,error}=await this.db.auth.signInWithPassword({email,password});
+        if(error)throw error;
+      }
+    }catch(err){alert(err.message||'Σφάλμα σύνδεσης');}
+    finally{btn.disabled=false;btn.textContent=isSignup?'Εγγραφή':'Σύνδεση';}
+  },
+
+  async resendVerification(){const email=document.getElementById('auth-email').value.trim();if(!email)return alert('Συμπληρώστε email');const {error}=await this.db.auth.resend({type:'signup',email});if(error)alert(error.message);else alert('Το email επιβεβαίωσης στάλθηκε ξανά!');},
+  logout(){this.db.auth.signOut();},
+  showForgotPassword(){document.getElementById('modal-auth').classList.add('hidden');document.getElementById('modal-auth').classList.remove('flex');document.getElementById('modal-forgot').classList.remove('hidden');document.getElementById('modal-forgot').classList.add('flex');},
+  async handleForgotPassword(e){e.preventDefault();const email=document.getElementById('forgot-email').value.trim();const btn=document.getElementById('forgot-submit-btn');btn.disabled=true;btn.textContent='Αποστολή...';const {error}=await this.db.auth.resetPasswordForEmail(email,{redirectTo:location.origin});btn.disabled=false;btn.textContent='Αποστολή Συνδέσμου';if(error)alert(error.message);else{document.getElementById('modal-forgot').classList.add('hidden');document.getElementById('modal-forgot').classList.remove('flex');document.getElementById('modal-forgot-sent').classList.remove('hidden');document.getElementById('modal-forgot-sent').classList.add('flex');}},
+  showLoginForm(){['modal-forgot','modal-forgot-sent','modal-new-password','modal-verify','modal-verified'].forEach(id=>{document.getElementById(id).classList.add('hidden');document.getElementById(id).classList.remove('flex');});document.getElementById('modal-auth').classList.remove('hidden');document.getElementById('modal-auth').classList.add('flex');this.resetTurnstile();},
+  showNewPasswordForm(){document.getElementById('modal-auth').classList.add('hidden');document.getElementById('modal-auth').classList.remove('flex');document.getElementById('modal-new-password').classList.remove('hidden');document.getElementById('modal-new-password').classList.add('flex');},
+  async handleNewPassword(e){e.preventDefault();const p1=document.getElementById('new-password').value,p2=document.getElementById('new-password-confirm').value;if(p1!==p2)return alert('Οι κωδικοί δεν ταιριάζουν');const {error}=await this.db.auth.updateUser({password:p1});if(error)alert(error.message);else{alert('Ο κωδικός άλλαξε επιτυχώς!');this.showLoginForm();}},
+  showVerifiedModal(){document.getElementById('modal-auth').classList.add('hidden');document.getElementById('modal-auth').classList.remove('flex');document.getElementById('modal-verified').classList.remove('hidden');document.getElementById('modal-verified').classList.add('flex');},
+
+  async openProfile(){const {data:{user}}=await this.db.auth.getUser();const meta=user.user_metadata||{};document.getElementById('profile-firstname').value=meta.firstname||'';document.getElementById('profile-lastname').value=meta.lastname||'';document.getElementById('profile-phone').value=meta.phone||'';document.getElementById('profile-email').value=user.email;document.getElementById('modal-profile').classList.remove('hidden');document.getElementById('modal-profile').classList.add('flex');},
+  async saveProfile(e){e.preventDefault();const firstname=document.getElementById('profile-firstname').value.trim(),lastname=document.getElementById('profile-lastname').value.trim(),phone=document.getElementById('profile-phone').value.trim();const {error}=await this.db.auth.updateUser({data:{firstname,lastname,phone}});if(error)alert(error.message);else{this.showToast('Προφίλ αποθηκεύτηκε!');this.closeModal('modal-profile');}},
+  askDeleteAccount(){document.getElementById('delete-account-confirm').classList.remove('hidden');},
+  cancelDeleteAccount(){document.getElementById('delete-account-confirm').classList.add('hidden');},
+  async deleteAccount(){if(!confirm('ΟΡΙΣΤΙΚΗ ΔΙΑΓΡΑΦΗ: Θα διαγραφούν ΟΛΑ τα δεδομένα σας. Σίγουρα;'))return;const {error}=await this.db.functions.invoke('delete-account',{body:{}});if(error){await this.db.from('guests').delete().eq('user_id',this.user.id);await this.db.from('events').delete().eq('user_id',this.user.id);await this.db.from('tables').delete().eq('user_id',this.user.id);await this.db.from('event_photos').delete().eq('user_id',this.user.id);}this.db.auth.signOut();},
+
+  async checkIfAdmin(){if(!this.user)return;const {data}=await this.db.from('admins').select('id').eq('id',this.user.id).single();this.isAdmin=!!data;if(this.isAdmin){document.getElementById('btn-admin').classList.remove('hidden');document.getElementById('btn-admin-mobile').classList.remove('hidden');}},
+  toggleAdminView(){const av=document.getElementById('view-admin'),cv=document.getElementById('view-client');if(av.classList.contains('hidden')){cv.classList.add('hidden');av.classList.remove('hidden');this.loadAdminData();}else this.showClientView();},
+  showClientView(){document.getElementById('view-admin').classList.add('hidden');document.getElementById('view-client').classList.remove('hidden');},
+  async loadAdminData(){const {data:users}=await this.db.rpc('admin_get_users');const {data:stats}=await this.db.rpc('admin_get_stats');const {data:activity}=await this.db.from('activity_logs').select('*').order('created_at',{ascending:false}).limit(50);const {data:transactions}=await this.db.from('credit_transactions').select('*').order('created_at',{ascending:false}).limit(50);this.adminData={users:users||[],stats:stats||{},activity:activity||[],transactions:transactions||[]};this.renderAdminDashboard();},
+  renderAdminDashboard(){
+    const d=this.adminData;
+    document.getElementById('admin-total-users').textContent=d.users.length;
+    const today=new Date().toISOString().split('T')[0];
+    document.getElementById('admin-events-today').textContent=this.events.filter(e=>e.date===today).length;
+    document.getElementById('admin-total-guests').textContent=this.guests.length;
+    document.getElementById('admin-premium-users').textContent=d.users.filter(u=>u.plan_type==='premium').length;
+    const tbody=document.getElementById('admin-users-table');
+    const search=document.getElementById('admin-user-search')?.value.toLowerCase()||'';
+    tbody.innerHTML=d.users.filter(u=>!search||u.email?.toLowerCase().includes(search)).map(u=>`<tr class="hover:bg-slate-50 transition-colors"><td class="px-3 md:px-6 py-3 font-medium">${this.escapeHTML(u.email)}</td><td class="px-3 md:px-6 py-3 text-slate-500 mobile-hide">${this.formatDate(u.created_at)}</td><td class="px-3 md:px-6 py-3"><span class="px-2 py-1 rounded-full text-xs font-bold ${u.plan_type==='premium'?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-600'}">${u.plan_type||'free'}</span></td><td class="px-3 md:px-6 py-3 font-mono">${u.credits||0}</td><td class="px-3 md:px-6 py-3">${u.total_events||0}</td><td class="px-3 md:px-6 py-3">${u.total_guests||0}</td><td class="px-3 md:px-6 py-3 text-right"><button onclick="app.openAddCreditsModal('${u.user_id}','${this.escapeHTML(u.email)}')" class="text-emerald-600 hover:text-emerald-700 font-bold text-xs">+ Credits</button></td></tr>`).join('');
+    document.getElementById('admin-activity-table').innerHTML=d.activity.map(a=>`<tr class="hover:bg-slate-50 transition-colors"><td class="px-3 md:px-6 py-3 font-medium text-xs">${this.escapeHTML(a.user_email||'—')}</td><td class="px-3 md:px-6 py-3"><span class="px-2 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700">${a.action}</span></td><td class="px-3 md:px-6 py-3 text-slate-500 text-xs mobile-hide">${this.escapeHTML(JSON.stringify(a.details||{}).slice(0,60))}</td><td class="px-3 md:px-6 py-3 text-slate-400 text-xs mobile-hide">${this.formatDate(a.created_at)}</td></tr>`).join('');
+    document.getElementById('admin-transactions-table').innerHTML=d.transactions.map(t=>`<tr class="hover:bg-slate-50 transition-colors"><td class="px-3 md:px-6 py-3 font-medium text-xs">${this.escapeHTML(t.user_email||'—')}</td><td class="px-3 md:px-6 py-3 font-bold ${t.amount>0?'text-emerald-600':'text-red-600'}">${t.amount>0?'+':''}${t.amount}</td><td class="px-3 md:px-6 py-3 text-slate-500 text-xs">${this.escapeHTML(t.reason||'—')}</td><td class="px-3 md:px-6 py-3 text-slate-500 text-xs">${this.escapeHTML(t.admin_email||'—')}</td><td class="px-3 md:px-6 py-3 text-slate-400 text-xs">${this.formatDate(t.created_at)}</td></tr>`).join('');
+  },
+  filterAdminUsers(){this.renderAdminDashboard();},refreshAdminData(){this.loadAdminData();},
+  openAddCreditsModal(userId,email){document.getElementById('add-credits-user').textContent=email;document.getElementById('add-credits-user').dataset.userId=userId;document.getElementById('modal-add-credits').classList.remove('hidden');document.getElementById('modal-add-credits').classList.add('flex');},
+  async confirmAddCredits(e){e.preventDefault();const userId=document.getElementById('add-credits-user').dataset.userId;const amount=parseInt(document.getElementById('add-credits-amount').value);const reason=document.getElementById('add-credits-reason').value;const {error}=await this.db.rpc('admin_add_credits',{target_user_id:userId,credit_amount:amount,transaction_reason:reason});if(error)alert(error.message);else{this.showToast(`Προστέθηκαν ${amount} credits!`);this.closeModal('modal-add-credits');this.loadAdminData();}},
+
+  async showApp(){document.getElementById('modal-auth').classList.add('hidden');document.getElementById('modal-auth').classList.remove('flex');document.getElementById('app').classList.remove('hidden');await this.loadEvents();},
+
+  async loadEvents(){
+    const {data,error}=await this.db.from('events').select('*').eq('user_id',this.user.id).order('date',{ascending:true});
+    if(error){this.showToast('Σφάλμα φόρτωσης');return;}
+    this.events=data||[];
+
+    const {data:allGuests,error:gErr}=await this.db.from('guests').select('*').eq('user_id',this.user.id);
+    if(!gErr&&allGuests){this.guests=allGuests;}
+
+    this.updateStats();
+    this.renderEvents();
+  },
+
+  updateStats(){
+    this.db.auth.getUser().then(({data})=>{if(data?.user){const meta=data.user.user_metadata||{};document.getElementById('user-plan').textContent=meta.plan==='premium'?'⭐ Premium':'Free';}});
+    document.getElementById('stat-events').textContent=this.events.length;
+    let total=0,confirmed=0,pending=0;
+    this.guests.forEach(g=>{total+=g.party_size||1;if(g.rsvp_status==='yes')confirmed+=g.rsvp_count||g.party_size||1;else if(!g.rsvp_status||g.rsvp_status==='pending')pending+=g.party_size||1;});
+    document.getElementById('stat-total').textContent=total;
+    document.getElementById('stat-confirmed').textContent=confirmed;
+    document.getElementById('stat-pending').textContent=pending;
+  },
+  renderEvents(){const c=document.getElementById('events-container');if(!this.events.length){c.innerHTML=`<div class="col-span-full text-center py-12 md:py-16"><div class="text-4xl md:text-6xl mb-4">📅</div><h3 class="text-lg md:text-xl font-bold text-slate-900 mb-2">Καμία εκδήλωση ακόμα</h3><p class="text-slate-500 mb-6 text-sm md:text-base">Δημιούργησε την πρώτη σου εκδήλωση!</p><button onclick="app.createEvent()" class="bg-rose-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 text-sm md:text-base touch-btn">Νέα Εκδήλωση</button></div>`;return;}
+    c.innerHTML=this.events.map(e=>{const typeIcon=e.type==='wedding'?'💒':e.type==='baptism'?'🕊️':'🎉';const gradients={wedding:'from-rose-100 to-pink-100',baptism:'from-blue-100 to-sky-100',party:'from-purple-100 to-fuchsia-100',corporate:'from-slate-100 to-gray-100'};const grad=gradients[e.type]||gradients.party;return `<div onclick="app.openEvent('${e.id}')" class="bg-gradient-to-br ${grad} rounded-2xl shadow-sm border border-slate-100 overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 group mobile-card"><div class="p-4 md:p-6"><div class="flex items-center justify-between mb-3"><span class="text-2xl md:text-3xl bg-white/50 backdrop-blur-sm rounded-xl px-2 py-1">${typeIcon}</span><span class="text-xs font-bold bg-white/70 text-slate-600 px-3 py-1.5 rounded-full">${this.formatDate(e.date)}</span></div><h3 class="text-lg md:text-xl font-bold mb-1 text-slate-900">${this.escapeHTML(e.name)}</h3><p class="text-xs md:text-sm text-slate-500">${this.escapeHTML(e.location||'Χωρίς τοποθεσία')}</p><div class="flex gap-3 mt-3 md:mt-4 text-slate-500 text-xs md:text-sm font-medium"><span>👥 ${e.guest_count||0}</span><span>✅ ${e.confirmed_count||0}</span><span>⏳ ${e.pending_count||0}</span></div></div></div>`;}).join('');
+  },
+  createEvent(){document.getElementById('modal-event').classList.remove('hidden');document.getElementById('modal-event').classList.add('flex');document.getElementById('event-modal-title').textContent='Νέα Εκδήλωση';document.getElementById('event-id').value='';document.getElementById('event-submit-btn').textContent='Δημιουργία';document.querySelectorAll('.event-type-btn').forEach(b=>{b.classList.remove('border-rose-500','border-blue-500','border-purple-500','bg-rose-50','bg-blue-50','bg-purple-50');});document.getElementById('event-name').value='';document.getElementById('event-date').value='';document.getElementById('event-location').value='';document.getElementById('event-church').value='';document.getElementById('event-contact-name').value='';document.getElementById('event-contact-phone').value='';document.getElementById('event-program').value='';document.getElementById('event-iban').value='';document.getElementById('event-spotify').value='';document.getElementById('event-slug').value='';},
+  selectEventType(type){
+    document.querySelectorAll('.event-type-btn').forEach(b=>{b.classList.remove('border-rose-500','border-blue-500','border-purple-500','bg-rose-50','bg-blue-50','bg-purple-50');if(b.dataset.type===type){const c=type==='wedding'?'rose':type==='baptism'?'blue':'purple';b.classList.add(`border-${c}-500`,`bg-${c}-50`);}});
+    document.getElementById('event-type-selected').value=type;
+    const churchField=document.getElementById('church-field');
+    const weddingFields=document.getElementById('wedding-fields');
+    const baptismFields=document.getElementById('baptism-fields');
+    const groomLabel=document.getElementById('label-groom-family');
+    const brideLabel=document.getElementById('label-bride-family');
+    const koubarosLabel=document.getElementById('label-koubaros');
+    const koubaraLabel=document.getElementById('label-koubara');
+    const koubaroiRow=document.getElementById('koubaroi-row');
+    
+    if(type==='party'||type==='corporate'){
+      churchField.classList.add('hidden');
+      weddingFields.classList.add('hidden');
+      baptismFields.classList.add('hidden');
+    }else if(type==='baptism'){
+      churchField.classList.remove('hidden');
+      weddingFields.classList.remove('hidden');
+      baptismFields.classList.add('hidden');
+      if(groomLabel)groomLabel.textContent='Ο Πατέρας';
+      if(brideLabel)brideLabel.textContent='Η Μητέρα';
+      if(koubarosLabel)koubarosLabel.textContent='Νονός';
+      if(koubaraLabel)koubaraLabel.textContent='Νονά';
+      if(koubaroiRow)koubaroiRow.classList.remove('hidden');
+    }else{
+      churchField.classList.remove('hidden');
+      weddingFields.classList.remove('hidden');
+      baptismFields.classList.add('hidden');
+      if(groomLabel)groomLabel.textContent='Οικογένεια Γαμπρού';
+      if(brideLabel)brideLabel.textContent='Οικογένεια Νύφης';
+      if(koubarosLabel)koubarosLabel.textContent='Κουμπάρος';
+      if(koubaraLabel)koubaraLabel.textContent='Κουμπάρα';
+      if(koubaroiRow)koubaroiRow.classList.remove('hidden');
+    }
+  },
+  async saveEvent(e){
+    e.preventDefault();
+    const id=document.getElementById('event-id').value;
+    const type=document.getElementById('event-type-selected').value;
+    const name=document.getElementById('event-name').value.trim();
+    const date=document.getElementById('event-date').value;
+    const eventTime=document.getElementById('event-time').value;
+    const location=document.getElementById('event-location').value.trim();
+    const church=document.getElementById('event-church').value.trim();
+    const contactName=document.getElementById('event-contact-name').value.trim();
+    const contactPhone=document.getElementById('event-contact-phone').value.trim();
+    const program=document.getElementById('event-program').value.trim();
+    const iban=document.getElementById('event-iban').value.trim();
+    const showIban=document.getElementById('event-show-iban').checked;
+    const spotify=document.getElementById('event-spotify').value.trim();
+    const slug=this.sanitizeSlug(document.getElementById('event-slug').value);
+    
+    const groomFamily=document.getElementById('event-groom-family')?.value.trim()||'';
+    const brideFamily=document.getElementById('event-bride-family')?.value.trim()||'';
+    const koubaros=document.getElementById('event-koubaros')?.value.trim()||'';
+    const koubara=document.getElementById('event-koubara')?.value.trim()||'';
+    
+    const nounos=document.getElementById('event-nounos')?.value.trim()||'';
+    const nouna=document.getElementById('event-nouna')?.value.trim()||'';
+    
+    if(!name||!date)return;
+    if(!this.user||!this.user.id){alert('Σφάλμα: Δεν είστε συνδεδεμένος. Ανανεώστε τη σελίδα.');return;}
+    
+    if(slug){
+      const {data:existing}=await this.db.from('events').select('id').eq('custom_slug',slug).limit(1);
+      if(existing&&existing.length>0&&existing[0].id!==id){
+        alert('Αυτό το Custom URL χρησιμοποιείται ήδη από άλλη εκδήλωση. Επίλεξε άλλο.');
+        return;
+      }
+    }
+    
+    const payload={
+      user_id:this.user.id,type,name,date,event_time:eventTime||null,
+      location,church_location:church,
+      contact_name:contactName,contact_phone:contactPhone,
+      program,gift_iban:iban,show_iban:showIban,
+      spotify_playlist:spotify,custom_slug:slug||null,
+      groom_family_name:groomFamily,bride_family_name:brideFamily,
+      koubaros_name:koubaros,koubara_name:koubara,
+      nounos_name:nounos,nouna_name:nouna
+    };
+    
+    Object.keys(payload).forEach(key=>{if(payload[key]===undefined)delete payload[key];});
+    
+    try{
+      if(id){
+        const {error}=await this.db.from('events').update(payload).eq('id',id);
+        if(error)throw error;
+      }else{
+        const {error}=await this.db.from('events').insert([payload]);
+        if(error)throw error;
+      }
+      this.showToast(id?'Η εκδήλωση ενημερώθηκε!':'Η εκδήλωση δημιουργήθηκε!');
+      this.closeModal('modal-event');
+      this.loadEvents();
+    }catch(err){
+      console.error('SAVE EVENT ERROR:', err);
+      alert('Σφάλμα αποθήκευσης:\n' + (err.message || err));
+    }
+  },
+  async openEvent(id){
+    this.currentEvent=this.events.find(e=>e.id===id);
+    if(!this.currentEvent)return;
+    document.getElementById('detail-title').textContent=this.currentEvent.name;
+    document.getElementById('detail-subtitle').textContent=`${this.formatDate(this.currentEvent.date)} • ${this.currentEvent.location||'Χωρίς τοποθεσία'}`;
+    document.getElementById('print-title').textContent=this.currentEvent.name;
+    document.getElementById('print-subtitle').textContent=`${this.formatDate(this.currentEvent.date)} • ${this.currentEvent.location||''}`;
+    await this.refreshCurrentEvent();
+    document.getElementById('modal-detail').classList.remove('hidden');
+    document.getElementById('modal-detail').classList.add('flex');
+    this.setTab('guests');
+    if(this.refreshInterval)clearInterval(this.refreshInterval);
+    this.refreshInterval=setInterval(()=>{if(this.currentEvent)this.refreshCurrentEvent();},5000);
+  },
+  closeModal(id){
+    const el=document.getElementById(id);
+    if(el){el.classList.add('hidden');el.classList.remove('flex');}
+    if(id==='modal-detail'){
+      this.currentEvent=null;this.currentTab='guests';
+      if(this.refreshInterval){clearInterval(this.refreshInterval);this.refreshInterval=null;}
+    }
+  },
+  setTab(tab){
+    this.currentTab=tab;
+    if(document.activeElement) document.activeElement.blur();
+    ['guests','tables','rsvp','reception','edit','photos'].forEach(t=>{
+      const btn=document.getElementById('tab-'+t),panel=document.getElementById('panel-'+t);
+      if(t===tab){
+        btn.classList.remove('bg-white','border','border-slate-200','text-slate-600');
+        btn.classList.add('bg-slate-900','text-white','shadow-md');
+        btn.style.backgroundColor = '#0f172a';
+        btn.style.color = '#ffffff';
+        panel.classList.remove('hidden');
+      }else{
+        btn.classList.add('bg-white','border','border-slate-200','text-slate-600');
+        btn.classList.remove('bg-slate-900','text-white','shadow-md');
+        btn.style.backgroundColor = '#ffffff';
+        btn.style.color = '#475569';
+        panel.classList.add('hidden');
+      }
+    });
+    if(tab==='edit')this.loadEditForm();
+  },
+  loadEditForm(){
+    if(!this.currentEvent)return;
+    document.getElementById('edit-name').value=this.currentEvent.name;
+    document.getElementById('edit-date').value=this.currentEvent.date;
+    document.getElementById('edit-location').value=this.currentEvent.location||'';
+    document.getElementById('edit-church').value=this.currentEvent.church_location||'';
+    document.getElementById('edit-contact-name').value=this.currentEvent.contact_name||'';
+    document.getElementById('edit-contact-phone').value=this.currentEvent.contact_phone||'';
+    document.getElementById('edit-program').value=this.currentEvent.program||'';
+    document.getElementById('edit-iban').value=this.currentEvent.gift_iban||'';
+    document.getElementById('edit-spotify').value=this.currentEvent.spotify_playlist||'';
+    document.getElementById('edit-slug').value=this.currentEvent.custom_slug||'';
+    
+    this.ensureEditField('edit-time','time',this.currentEvent.event_time||'');
+    this.ensureEditField('edit-groom-family','text',this.currentEvent.groom_family_name||'');
+    this.ensureEditField('edit-bride-family','text',this.currentEvent.bride_family_name||'');
+    this.ensureEditField('edit-koubaros','text',this.currentEvent.koubaros_name||'');
+    this.ensureEditField('edit-koubara','text',this.currentEvent.koubara_name||'');
+    this.ensureEditField('edit-nounos','text',this.currentEvent.nounos_name||'');
+    this.ensureEditField('edit-nouna','text',this.currentEvent.nouna_name||'');
+    this.ensureEditField('edit-show-iban','checkbox',this.currentEvent.show_iban!==false);
+    
+    const cw=document.getElementById('edit-church-wrap');
+    if(this.currentEvent.type==='party')cw.classList.add('hidden');else cw.classList.remove('hidden');
+  },
+  ensureEditField(id,type,value){
+    let el=document.getElementById(id);
+    if(!el){
+      const container=document.getElementById('panel-edit').querySelector('form');
+      const div=document.createElement('div');
+      div.innerHTML=`<label class="text-xs font-semibold text-slate-700">${id.replace('edit-','')}</label><input type="${type}" id="${id}" class="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none text-sm">`;
+      container.insertBefore(div,container.querySelector('.flex.gap-3'));
+      el=document.getElementById(id);
+    }
+    if(type==='checkbox')el.checked=!!value;else el.value=value||'';
+  },
+  async updateEventDetails(e){
+    e.preventDefault();
+    if(!this.currentEvent)return;
+    const payload={
+      name:document.getElementById('edit-name').value.trim(),
+      date:document.getElementById('edit-date').value,
+      location:document.getElementById('edit-location').value.trim(),
+      church_location:document.getElementById('edit-church').value.trim(),
+      contact_name:document.getElementById('edit-contact-name').value.trim(),
+      contact_phone:document.getElementById('edit-contact-phone').value.trim(),
+      program:document.getElementById('edit-program').value.trim(),
+      gift_iban:document.getElementById('edit-iban').value.trim(),
+      spotify_playlist:document.getElementById('edit-spotify').value.trim(),
+      custom_slug:this.sanitizeSlug(document.getElementById('edit-slug').value)||null,
+      event_time:document.getElementById('edit-time')?.value||null,
+      groom_family_name:document.getElementById('edit-groom-family')?.value.trim()||'',
+      bride_family_name:document.getElementById('edit-bride-family')?.value.trim()||'',
+      koubaros_name:document.getElementById('edit-koubaros')?.value.trim()||'',
+      koubara_name:document.getElementById('edit-koubara')?.value.trim()||'',
+      nounos_name:document.getElementById('edit-nounos')?.value.trim()||'',
+      nouna_name:document.getElementById('edit-nouna')?.value.trim()||'',
+      show_iban:document.getElementById('edit-show-iban')?.checked!==false
+    };
+    const {error}=await this.db.from('events').update(payload).eq('id',this.currentEvent.id);
+    if(error){this.showToast('Σφάλμα ενημέρωσης');return;}
+    this.showToast('✅ Αποθηκεύτηκε!');
+    await this.loadEvents();
+    this.currentEvent=this.events.find(e=>e.id===this.currentEvent.id);
+  },
+  previewEventWebsite(){if(!this.currentEvent)return;const slug=this.currentEvent.custom_slug||this.currentEvent.id;window.open(`event.html?id=${slug}`,'_blank');},
+  showDeleteConfirm(){document.getElementById('modal-delete').classList.remove('hidden');document.getElementById('modal-delete').classList.add('flex');},
+  async confirmDeleteEvent(){
+    if(!this.currentEvent)return;
+    const id=this.currentEvent.id;
+    const { data: photos } = await this.db.from('event_photos').select('storage_path').eq('event_id', id);
+    if (photos && photos.length > 0) {
+      const paths = photos.map(p => p.storage_path).filter(Boolean);
+      if (paths.length > 0) {
+        await this.db.storage.from('event-photos').remove(paths);
+      }
+    }
+    await this.db.from('event_photos').delete().eq('event_id',id);
+    await this.db.from('guests').delete().eq('event_id',id);
+    await this.db.from('tables').delete().eq('event_id',id);
+    await this.db.from('events').delete().eq('id',id);
+    this.showToast('Η εκδήλωση διαγράφηκε');
+    this.closeModal('modal-delete');
+    this.closeModal('modal-detail');
+    this.loadEvents();
+  },
+  printEvent(){window.print();},
+  exportEventCSV(){
+    if(!this.currentEvent)return;
+    const rows=[['Όνομα','Τηλέφωνο','Email','Άτομα','Πλευρά','Ομάδα','RSVP','Check-in','Τραπέζι','Σημειώσεις']];
+    this.guests.forEach(g=>rows.push([g.name,g.phone||'',g.email||'',g.party_size||1,g.side||'',g.category||'',g.rsvp_status||'pending',g.checked_in?'ΝΑΙ':'ΟΧΙ',g.table_name||'',g.notes||'']));
+    const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`${this.currentEvent.name}-guests.csv`;
+    a.click();
+  },
+  async saveGuest(e){
+    e.preventDefault();
+    if(!this.currentEvent)return;
+    const name=document.getElementById('g-name').value.trim();
+    const partySize=parseInt(document.getElementById('g-party').value)||1;
+    const phone=document.getElementById('g-phone').value.trim();
+    const email=document.getElementById('g-email').value.trim();
+    const side=document.getElementById('g-side').value;
+    const category=document.getElementById('g-category').value;
+    const isFamily=document.getElementById('g-family').checked;
+    if(!name)return;
+    const displayName=isFamily?`Οικογένεια ${name}`:name;
+    const {error}=await this.db.from('guests').insert([{
+      event_id:this.currentEvent.id,
+      user_id:this.user.id,
+      name:displayName,
+      phone,email,party_size:partySize,side,category,is_family:isFamily,
+      rsvp_token:this.generateToken()
+    }]);
+    if(error){this.showToast('Σφάλμα κατά την προσθήκη');return;}
+    document.getElementById('g-name').value='';
+    document.getElementById('g-party').value='1';
+    document.getElementById('g-phone').value='';
+    document.getElementById('g-email').value='';
+    document.getElementById('g-family').checked=false;
+    this.showToast('Ο καλεσμένος προστέθηκε!');
+    this.refreshCurrentEvent();
+  },
+  openEditGuestModal(id){
+    const g=this.guests.find(x=>x.id===id);
+    if(!g)return;
+    document.getElementById('edit-guest-id').value=g.id;
+    document.getElementById('edit-g-name').value=g.name||'';
+    document.getElementById('edit-g-party').value=g.party_size||1;
+    document.getElementById('edit-g-phone').value=g.phone||'';
+    document.getElementById('edit-g-email').value=g.email||'';
+    document.getElementById('edit-g-side').value=g.side||'';
+    document.getElementById('edit-g-category').value=g.category||'family';
+    const tableSelect=document.getElementById('edit-g-table');
+    tableSelect.innerHTML='<option value="">— Χωρίς τραπέζι —</option>';
+    this.tables.forEach(t=>{
+      const opt=document.createElement('option');
+      opt.value=t.id;
+      opt.textContent=t.name+' ('+t.capacity+' άτομα)';
+      if(g.table_id===t.id)opt.selected=true;
+      tableSelect.appendChild(opt);
+    });
+    document.getElementById('edit-g-new-table-form').classList.add('hidden');
+    document.getElementById('edit-g-show-new-table-btn').classList.remove('hidden');
+    document.getElementById('modal-edit-guest').classList.remove('hidden');
+    document.getElementById('modal-edit-guest').classList.add('flex');
+  },
+  toggleNewTableForm(){
+    document.getElementById('edit-g-new-table-form').classList.remove('hidden');
+    document.getElementById('edit-g-show-new-table-btn').classList.add('hidden');
+  },
+  async addTableFromGuestEdit(){
+    if(!this.currentEvent)return;
+    const name=document.getElementById('edit-g-new-table-name').value.trim();
+    const capacity=parseInt(document.getElementById('edit-g-new-table-cap').value)||10;
+    if(!name){alert('Δώστε όνομα τραπεζιού');return;}
+    const {data,error}=await this.db.from('tables').insert([{event_id:this.currentEvent.id,name,capacity}]).select();
+    if(error){alert('Σφάλμα: '+error.message);return;}
+    await this.refreshCurrentEvent();
+    const tableSelect=document.getElementById('edit-g-table');
+    const opt=document.createElement('option');
+    opt.value=data[0].id;
+    opt.textContent=name+' ('+capacity+' άτομα)';
+    opt.selected=true;
+    tableSelect.appendChild(opt);
+    document.getElementById('edit-g-new-table-form').classList.add('hidden');
+    document.getElementById('edit-g-show-new-table-btn').classList.remove('hidden');
+    document.getElementById('edit-g-new-table-name').value='';
+    this.showToast('Το τραπέζι προστέθηκε!');
+  },
+  async updateGuest(e){
+    e.preventDefault();
+    const id=document.getElementById('edit-guest-id').value;
+    const name=document.getElementById('edit-g-name').value.trim();
+    const partySize=parseInt(document.getElementById('edit-g-party').value)||1;
+    const phone=document.getElementById('edit-g-phone').value.trim();
+    const email=document.getElementById('edit-g-email').value.trim();
+    const side=document.getElementById('edit-g-side').value;
+    const category=document.getElementById('edit-g-category').value;
+    const tableId=document.getElementById('edit-g-table').value||null;
+    if(!name)return;
+    const table=this.tables.find(t=>t.id==tableId);
+    const updateData={name,phone,email,party_size:partySize,side,category,table_id:tableId||null,table_name:table?.name||null};
+    const {error}=await this.db.from('guests').update(updateData).eq('id',id);
+    if(error){this.showToast('Σφάλμα ενημέρωσης');return;}
+    this.showToast('Ο καλεσμένος ενημερώθηκε!');
+    this.closeModal('modal-edit-guest');
+    this.refreshCurrentEvent();
+  },
+  async deleteGuest(id) {
+    if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτόν τον καλεσμένο;')) return;
+    const { error } = await this.db.from('guests').delete().eq('id', id);
+    if (error) { this.showToast('Σφάλμα κατά τη διαγραφή'); return; }
+    this.showToast('Ο καλεσμένος διαγράφηκε!');
+    this.refreshCurrentEvent();
+  },
+
+  renderGuests(){
+    const tbody=document.getElementById('guests-table-body');
+    const limit=this.currentEvent?.plan==='premium'?500:50;
+    const totalPeople=this.guests.reduce((sum,g)=>sum+(g.party_size||1),0);
+    document.getElementById('guest-count-display').textContent=`${this.guests.length} προσκλήσεις / ${totalPeople} άτομα (όριο: ${limit})`;
+    if(!this.guests.length){tbody.innerHTML=`<tr><td colspan="7" class="px-4 py-8 text-center text-slate-400 text-sm">Δεν υπάρχουν καλεσμένοι ακόμα</td></tr>`;return;}
+    tbody.innerHTML=this.guests.map(g=>{
+      const rsvpClass=g.rsvp_status==='yes'?'bg-emerald-100 text-emerald-700':g.rsvp_status==='no'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700';
+      const rsvpText=g.rsvp_status==='yes'?`✅ ${g.rsvp_count||g.party_size||1}/${g.party_size||1}`:g.rsvp_status==='no'?'❌ Δεν έρχεται':'⏳ Αναμονή';
+      const checkinBtn=g.checked_in?`<span class="text-emerald-600 font-bold text-xs">✅ Έφτασε</span>`:`<button onclick="app.checkInGuest('${g.id}')" class="text-slate-400 hover:text-emerald-600 transition-colors text-xs font-bold">⬜ Check-in</button>`;
+      const smsBadge=g.sms_count>0?`<span class="ml-1 text-xs" title="${g.sms_count} SMS">✉️ ${g.sms_count}</span>`:'';
+      return `<tr class="hover:bg-slate-50 transition-colors"><td class="px-3 md:px-4 py-3"><div class="font-semibold text-slate-900 text-sm">${this.escapeHTML(g.name)}</div><div class="text-xs text-slate-400">${g.phone?'📞 '+this.escapeHTML(g.phone):''}${g.email?' ✉️ '+this.escapeHTML(g.email):''}${smsBadge}</div></td><td class="px-3 md:px-4 py-3 text-xs"><span class="px-2 py-1 rounded-full ${g.side==='groom'?'bg-blue-100 text-blue-700':g.side==='bride'?'bg-pink-100 text-pink-700':'bg-slate-100 text-slate-600'}">${g.side==='groom'?'Γαμπρού':g.side==='bride'?'Νύφης':'—'}</span></td><td class="px-3 md:px-4 py-3 text-xs text-slate-600">${this.escapeHTML(g.category||'—')}</td><td class="px-3 md:px-4 py-3 text-xs text-slate-600">${this.escapeHTML(g.table_name||'—')}</td><td class="px-3 md:px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-bold ${rsvpClass}">${rsvpText}</span></td><td class="px-3 md:px-4 py-3">${checkinBtn}</td><td class="px-3 md:px-4 py-3 text-right no-print"><button onclick="app.openEditGuestModal('${g.id}')" class="text-slate-400 hover:text-amber-600 transition-colors text-xs mr-2" title="Επεξεργασία">✏️</button><button onclick="app.copyRsvpLink('${g.rsvp_token}')" class="text-slate-400 hover:text-blue-600 transition-colors text-xs mr-2" title="RSVP Link">🔗</button><button onclick="app.sendGuestSMS('${g.id}')" class="text-slate-400 hover:text-sky-600 transition-colors text-xs mr-2" title="SMS">💬</button><button onclick="app.sendEmailInvitation('${g.email || ''}', '${this.escapeHTML(g.name)}', '${this.escapeHTML(this.currentEvent.name)}', '${this.currentEvent.date || ''}', '${this.currentEvent.event_time || ''}', '${this.escapeHTML(this.currentEvent.location || '')}', '${this.currentEvent.cover_photo_url || ''}', '${location.origin}/event.html?token=${g.rsvp_token}')" class="text-slate-400 hover:text-purple-600 transition-colors text-xs mr-2" title="Email Πρόσκληση">📧</button><button onclick="app.openSMSHistory('${g.id}')" class="text-slate-400 hover:text-sky-600 transition-colors text-xs mr-2" title="Ιστορικό SMS">📨</button><button onclick="app.deleteGuest('${g.id}')" class="text-slate-400 hover:text-red-600 transition-colors text-xs">🗑️</button></td></tr>`;
+    }).join('');
+  },
+  async checkInGuest(id){await this.db.from('guests').update({checked_in:true,checked_in_at:new Date().toISOString()}).eq('id',id);this.refreshCurrentEvent();this.showToast('Check-in επιτυχές!');},
+  async updateRSVP(id,status,count){await this.db.from('guests').update({rsvp_status:status,rsvp_count:count||null}).eq('id',id);this.refreshCurrentEvent();},
+  copyRsvpLink(token){const url=`${location.origin}/event.html?token=${token}`;navigator.clipboard.writeText(url).then(()=>this.showToast('RSVP link αντιγράφηκε!'));},
+
+  renderTables(){const c=document.getElementById('tables-container');if(!this.tables.length){c.innerHTML='<p class="text-slate-400 text-center py-8 text-sm">Δεν υπάρχουν τραπέζια ακόμα</p>';return;}
+    c.innerHTML=this.tables.map(t=>{const guests=this.guests.filter(g=>g.table_id===t.id);const people=guests.reduce((sum,g)=>sum+(g.party_size||1),0);const capacity=t.capacity||10;return `<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm"><div class="flex items-center justify-between mb-3"><h4 class="font-bold text-slate-900">${this.escapeHTML(t.name)}</h4><div class="flex items-center gap-2"><span class="text-xs font-bold ${people>capacity?'text-red-600':'text-slate-500'}">${people}/${capacity} άτομα</span><button onclick="app.deleteTable(${t.id})" class="text-slate-400 hover:text-red-600 text-xs">🗑️</button></div></div><div class="space-y-1 mb-3">${guests.map(g=>`<div class="flex items-center justify-between bg-slate-50 rounded-lg px-2 py-1.5 text-xs"><span class="font-medium text-slate-700">${this.escapeHTML(g.name)} <span class="text-slate-400">(${g.party_size||1} άτομα)</span></span><button onclick="app.removeFromTable('${g.id}')" class="text-slate-400 hover:text-red-600">✕</button></div>`).join('')}${guests.length===0?'<p class="text-xs text-slate-400 italic">Κενό τραπέζι</p>':''}</div><select onchange="app.assignToTable(${t.id},this.value)" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs bg-white"><option value="">+ Προσθήκη καλεσμένου</option>${this.guests.filter(g=>!g.table_id).map(g=>`<option value="${g.id}">${this.escapeHTML(g.name)} (${g.party_size||1})</option>`).join('')}</select></div>`;}).join('');
+  },
+  async addTable(e){e.preventDefault();if(!this.currentEvent)return;const name=document.getElementById('table-name-input').value.trim();const capacity=parseInt(document.getElementById('table-capacity').value)||10;await this.db.from('tables').insert([{event_id:this.currentEvent.id,name,capacity}]);document.getElementById('table-name-input').value='';document.getElementById('table-capacity').value='';this.refreshCurrentEvent();},
+  async deleteTable(id){if(!confirm('Διαγραφή τραπεζιού;'))return;await this.db.from('guests').update({table_id:null,table_name:null}).eq('table_id',id);await this.db.from('tables').delete().eq('id',id);this.refreshCurrentEvent();},
+  async assignToTable(tableId,guestId){if(!guestId)return;const table=this.tables.find(t=>t.id===tableId);const guest=this.guests.find(g=>g.id===guestId);const currentPeople=this.guests.filter(g=>g.table_id===tableId).reduce((sum,g)=>sum+(g.party_size||1),0);if(currentPeople+(guest.party_size||1)>(table.capacity||10)){alert('Δεν χωράει! Αύξησε τη χωρητικότητα του τραπεζιού.');return;}await this.db.from('guests').update({table_id:tableId,table_name:table?.name||null}).eq('id',guestId);this.refreshCurrentEvent();},
+  async removeFromTable(guestId){await this.db.from('guests').update({table_id:null,table_name:null}).eq('id',guestId);this.refreshCurrentEvent();},
+
+  async runAutoReseat() {
+    if (!this.currentEvent) return;
+    if (!confirm('Θέλετε να γίνει αυτόματη κατανομή (καραμπόλα) των επιβεβαιωμένων καλεσμένων στα διαθέσιμα τραπέζια με βάση τις οικογένειες και τη χωρητικότητα;')) return;
+
+    const confirmedGuests = this.guests.filter(g => g.rsvp_status === 'yes');
+    if (!confirmedGuests.length) { alert('Δεν υπάρχουν επιβεβαιωμένοι καλεσμένοι για τακτοποίηση.'); return; }
+    if (!this.tables.length) { alert('Δεν έχετε δημιουργήσει τραπέζια!'); return; }
+
+    let tablesPool = this.tables.map(t => {
+      const assignedPeople = this.guests.filter(g => g.table_id == t.id).reduce((sum, g) => sum + (g.party_size || 1), 0);
+      return { ...t, currentLoad: assignedPeople, availableCapacity: (t.capacity || 10) - assignedPeople };
+    });
+
+    let unassigned = [...confirmedGuests].sort((a, b) => (b.party_size || 1) - (a.party_size || 1));
+    let updates = [];
+
+    for (let guest of unassigned) {
+      const guestSize = guest.party_size || 1;
+      let targetTable = tablesPool.find(t => t.availableCapacity >= guestSize);
+      if (!targetTable) {
+        tablesPool.sort((a, b) => b.availableCapacity - a.availableCapacity);
+        targetTable = tablesPool[0];
+      }
+      if (targetTable && targetTable.availableCapacity > 0) {
+        updates.push({ id: guest.id, table_id: targetTable.id, table_name: targetTable.name });
+        targetTable.availableCapacity -= guestSize;
+        targetTable.currentLoad += guestSize;
+      }
+    }
+
+    try {
+      for (let update of updates) {
+        await this.db.from('guests').update({ table_id: update.table_id, table_name: update.table_name }).eq('id', update.id);
+      }
+      this.showToast('✨ Η καραμπόλα θέσεων ολοκληρώθηκε!');
+      this.refreshCurrentEvent();
+    } catch (err) {
+      alert('Σφάλμα κατά την αυτόματη κατανομή.');
+    }
+  },
+
+  renderRSVP(){const yes=this.guests.filter(g=>g.rsvp_status==='yes').reduce((sum,g)=>sum+(g.rsvp_count||g.party_size||1),0);const no=this.guests.filter(g=>g.rsvp_status==='no').reduce((sum,g)=>sum+(g.party_size||1),0);const maybe=this.guests.filter(g=>!g.rsvp_status||g.rsvp_status==='pending').reduce((sum,g)=>sum+(g.party_size||1),0);document.getElementById('rsvp-yes').textContent=yes;document.getElementById('rsvp-no').textContent=no;document.getElementById('rsvp-maybe').textContent=maybe;
+    const list=document.getElementById('rsvp-list');if(!this.guests.length){list.innerHTML='<p class="text-slate-400 text-center py-8">Καμία απάντηση ακόμα</p>';return;}
+    list.innerHTML=this.guests.map(g=>{
+      const status=g.rsvp_status==='yes'?'✅ Θα έρθουν':g.rsvp_status==='no'?'❌ Δεν έρχονται':'⏳ Αναμονή';
+      const color=g.rsvp_status==='yes'?'text-emerald-600':g.rsvp_status==='no'?'text-red-600':'text-amber-600';
+      const currentCount=g.rsvp_count||g.party_size||1;
+      return `<div class="flex items-center justify-between bg-white rounded-xl p-3 border border-slate-200 shadow-sm"><div><p class="font-semibold text-sm text-slate-900">${this.escapeHTML(g.name)} <span class="text-slate-400 text-xs">(${g.party_size||1} άτομα)</span></p><p class="text-xs ${color}">${status}${g.rsvp_status==='yes'?' ('+currentCount+' άτομα)':''}</p></div><div class="flex gap-1 no-print">${Array.from({length:g.party_size||1},(_,i)=>i+1).map(n=>{const isSelected=g.rsvp_status==='yes'&&currentCount===n;return `<button onclick="app.updateRSVP('${g.id}','yes',${n})" class="px-2 py-1 rounded-lg text-xs font-bold touch-btn transition-all ${isSelected?'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-300':'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}" title="${n} άτομα">${n}</button>`;}).join('')}<button onclick="app.updateRSVP('${g.id}','no')" class="p-2 rounded-lg ${g.rsvp_status==='no'?'bg-red-600 text-white shadow-md ring-2 ring-red-300':'bg-red-50 text-red-600 hover:bg-red-100'} text-xs font-bold touch-btn transition-all">❌</button><button onclick="app.updateRSVP('${g.id}','pending')" class="p-2 rounded-lg ${!g.rsvp_status||g.rsvp_status==='pending'?'bg-amber-500 text-white shadow-md ring-2 ring-amber-300':'bg-amber-50 text-amber-600 hover:bg-amber-100'} text-xs font-bold touch-btn transition-all">⏳</button></div></div>`;
+    }).join('');
+  },
+  renderReception(){const list=document.getElementById('reception-list');if(!this.guests.length){list.innerHTML='<p class="text-slate-400 text-center py-8">Κανένας καλεσμένος</p>';return;}
+    list.innerHTML=this.guests.map(g=>{const reception=g.reception!==false;return `<div class="flex items-center justify-between bg-white rounded-xl p-3 border border-slate-200 shadow-sm"><div><p class="font-semibold text-sm text-slate-900">${this.escapeHTML(g.name)} <span class="text-slate-400 text-xs">(${g.party_size||1} άτομα)</span></p><p class="text-xs text-slate-500">${g.rsvp_status==='yes'?'✅ Θα έρθουν':g.rsvp_status==='no'?'❌ Δεν έρχονται':'⏳ Αναμονή'}</p></div><button onclick="app.toggleReception('${g.id}')" class="px-3 py-2 rounded-lg text-xs font-bold transition-all touch-btn ${reception?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-500'}">${reception?'🍽️ Στη δεξίωση':'❌ Όχι στη δεξίωση'}</button></div>`;}).join('');
+  },
+  async toggleReception(id){const g=this.guests.find(x=>x.id===id);await this.db.from('guests').update({reception:!(g?.reception!==false)}).eq('id',id);this.refreshCurrentEvent();},
+
+  downloadExcelTemplate(){const ws=XLSX.utils.aoa_to_sheet([['Όνομα','Τηλέφωνο','Email','Άτομα','Πλευρά (groom/bride)','Ομάδα (family/friends/koubaroi/other)']]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Template');XLSX.writeFile(wb,'guestlist-template.xlsx');},
+  async importGuestsFromExcel(e){const file=e.target.files[0];if(!file)return;const data=await file.arrayBuffer();const workbook=XLSX.read(data,{type:'array'});const sheet=workbook.Sheets[workbook.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(sheet,{header:1});if(rows.length<2)return alert('Το αρχείο είναι κενό');
+    const headers=rows[0].map(h=>String(h).toLowerCase().trim());const nameIdx=headers.findIndex(h=>h.includes('όνομα')||h.includes('name')||h.includes('ονομα'));const phoneIdx=headers.findIndex(h=>h.includes('τηλ')||h.includes('phone')||h.includes('tel'));const emailIdx=headers.findIndex(h=>h.includes('email')||h.includes('mail'));const partyIdx=headers.findIndex(h=>h.includes('άτομα')||h.includes('άτομ')||h.includes('party')||h.includes('atom'));const sideIdx=headers.findIndex(h=>h.includes('πλευρά')||h.includes('side')||h.includes('pleura'));const catIdx=headers.findIndex(h=>h.includes('ομάδα')||h.includes('κατηγορία')||h.includes('category')||h.includes('group'));
+    this.importData=[];for(let i=1;i<rows.length;i++){const row=rows[i];const name=row[nameIdx>=0?nameIdx:0];if(!name)continue;this.importData.push({name:String(name).trim(),phone:phoneIdx>=0?String(row[phoneIdx]||'').trim():'',email:emailIdx>=0?String(row[emailIdx]||'').trim():'',party_size:partyIdx>=0?(parseInt(row[partyIdx])||1):1,side:this.normalizeSide(sideIdx>=0?String(row[sideIdx]||''):''),category:this.normalizeCategory(catIdx>=0?String(row[catIdx]||''):'other')});}
+    this.showImportPreview();
+  },
+  normalizeSide(val){const v=val.toLowerCase();if(v.includes('γαμπρ')||v.includes('groom'))return'groom';if(v.includes('νύφ')||v.includes('bride')||v.includes('nyfh'))return'bride';return'';},
+  normalizeCategory(val){const v=val.toLowerCase();if(v.includes('οικογ')||v.includes('family'))return'family';if(v.includes('φίλ')||v.includes('friends'))return'friends';if(v.includes('κουμπ')||v.includes('koubar'))return'koubaroi';return'other';},
+  showImportPreview(){const tbody=document.getElementById('import-preview-body');tbody.innerHTML=this.importData.map((g,i)=>`<tr><td class="px-3 py-2 text-xs">${i+1}</td><td class="px-3 py-2 text-xs font-medium">${this.escapeHTML(g.name)}</td><td class="px-3 py-2 text-xs">${this.escapeHTML(g.phone)}</td><td class="px-3 py-2 text-xs">${this.escapeHTML(g.email)}</td><td class="px-3 py-2 text-xs">${g.party_size}</td><td class="px-3 py-2 text-xs">${g.side}</td><td class="px-3 py-2 text-xs">${g.category}</td></tr>`).join('');document.getElementById('modal-import').classList.remove('hidden');document.getElementById('modal-import').classList.add('flex');},
+  async confirmImport(){if(!this.currentEvent||!this.importData.length)return;const limit=this.currentEvent.plan==='premium'?500:50;const currentTotal=this.guests.length+this.importData.length;if(currentTotal>limit){alert(`Υπέρβαση ορίου! Μέγιστο: ${limit}`);return;}
+    const inserts=this.importData.map(g=>({event_id:this.currentEvent.id,user_id:this.user.id,name:g.name,phone:g.phone,email:g.email,party_size:g.party_size,side:g.side,category:g.category,rsvp_token:this.generateToken()}));
+    const {error}=await this.db.from('guests').insert(inserts);if(error){alert(error.message);return;}this.showToast(`${inserts.length} καλεσμένοι εισήχθησαν!`);this.closeModal('modal-import');this.importData=[];this.refreshCurrentEvent();
+  },
+  exportGuestsToExcel(){if(!this.currentEvent)return;const rows=this.guests.map(g=>({'Όνομα':g.name,'Τηλέφωνο':g.phone||'','Email':g.email||'','Άτομα':g.party_size||1,'Πλευρά':g.side==='groom'?'Γαμπρού':g.side==='bride'?'Νύφης':'','Ομάδα':g.category||'','RSVP':g.rsvp_status||'pending','Check-in':g.checked_in?'ΝΑΙ':'ΟΧΙ','Τραπέζι':g.table_name||'','Σημειώσεις':g.notes||''}));const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Guests');XLSX.writeFile(wb,`${this.currentEvent.name}-guests.xlsx`);},
+  exportTaxList(){if(!this.currentEvent)return;const rows=this.guests.map((g,i)=>({'Α/Α':i+1,'Ονοματεπώνυμο':g.name,'Άτομα':g.party_size||1,'Τηλέφωνο':g.phone||'','Email':g.email||'','Τραπέζι':g.table_name||'','Παρουσία':g.rsvp_status==='yes'?'ΝΑΙ':g.rsvp_status==='no'?'ΟΧΙ':'ΑΝΑΜΟΝΗ'}));const ws1=XLSX.utils.json_to_sheet(rows);const totalPeople=rows.reduce((sum,r)=>sum+r['Άτομα'],0);const confirmedPeople=this.guests.filter(g=>g.rsvp_status==='yes').reduce((sum,g)=>sum+(g.rsvp_count||g.party_size||1),0);const ws2=XLSX.utils.json_to_sheet([{'Σύνολο Προσκλήσεων':this.guests.length,'Σύνολο Ατόμων':totalPeople,'Επιβεβαιωμένοι':confirmedPeople}]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws1,'Λίστα');XLSX.utils.book_append_sheet(wb,ws2,'Σύνοψη');XLSX.writeFile(wb,`${this.currentEvent.name}-lista-dilosis.xlsx`);},
+
+  openCheckinScanner(){document.getElementById('modal-checkin').classList.remove('hidden');document.getElementById('modal-checkin').classList.add('flex');document.getElementById('qr-result').classList.add('hidden');this.scanner=new Html5Qrcode('qr-reader');this.scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:250}},(decodedText)=>{this.onQrCodeScanned(decodedText);},()=>{}).catch(err=>{document.getElementById('qr-reader').innerHTML='<p class="text-red-500 text-sm p-4">Σφάλμα κάμερας. Ελέγξτε τα δικαιώματα.</p>';});},
+  async onQrCodeScanned(token){const guest=this.guests.find(g=>g.rsvp_token===token);if(!guest){this.showToast('Άγνωστο QR code');return;}if(this.scanner){await this.scanner.stop();this.scanner=null;}await this.db.from('guests').update({checked_in:true,checked_in_at:new Date().toISOString()}).eq('id',guest.id);document.getElementById('qr-guest-name').textContent=guest.name;document.getElementById('qr-result').classList.remove('hidden');this.refreshCurrentEvent();},
+  restartScanner(){if(this.scanner){this.scanner.stop().catch(()=>{});this.scanner=null;}document.getElementById('qr-result').classList.add('hidden');this.openCheckinScanner();},
+  closeCheckinScanner(){if(this.scanner){this.scanner.stop().catch(()=>{});this.scanner=null;}this.closeModal('modal-checkin');},
+  printCheckinList(){const win=window.open('','_blank');const rows=this.guests.map(g=>`<tr><td>${this.escapeHTML(g.name)}</td><td>${g.party_size||1}</td><td>${g.checked_in?'✅':'⬜'}</td><td>${g.rsvp_status==='yes'?'ΝΑΙ':g.rsvp_status==='no'?'ΟΧΙ':'?'}</td></tr>`).join('');win.document.write(`<html><head><title>Check-in List</title><style>body{font-family:sans-serif;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#f5f5f5}</style></head><body><h1>${this.escapeHTML(this.currentEvent.name)} - Check-in List</h1><table><thead><tr><th>Όνομα</th><th>Άτομα</th><th>Check-in</th><th>RSVP</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);win.document.close();win.print();},
+  printCateringList() {
+    if (!this.currentEvent) return;
+    const receptionGuests = this.guests.filter(g => g.reception !== false);
+    const confirmedGuests = receptionGuests.filter(g => g.rsvp_status === 'yes');
+    const tablesMap = {};
+    receptionGuests.forEach(g => {
+      const tName = g.table_name ? String(g.table_name) : 'Χωρίς Τραπέζι';
+      if (!tablesMap[tName]) tablesMap[tName] = [];
+      tablesMap[tName].push(g);
+    });
+
+    const win = window.open('', '_blank');
+    if (!win) { alert('Παρακαλώ επιτρέψτε τα αναδυόμενα παράθυρα (pop-ups).'); return; }
+
+    let tablesHtml = '';
+    for (let tName in tablesMap) {
+      const gList = tablesMap[tName];
+      const tTotal = gList.reduce((s, x) => s + (x.party_size || 1), 0);
+      const tConfirmed = gList.filter(x => x.rsvp_status === 'yes').reduce((s, x) => s + (x.rsvp_count || x.party_size || 1), 0);
+
+      tablesHtml += `
+        <div style="margin-bottom: 20px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; page-break-inside: avoid;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #0f172a; padding-bottom: 6px; margin-bottom: 8px;">
+            <strong style="font-size: 16px;">🪑 ${this.escapeHTML(tName)}</strong>
+            <span style="font-size: 13px;">Σύνολο: <strong>${tTotal}</strong> | Επιβεβαιωμένα Άτομα: <strong style="color: #16a34a;">${tConfirmed}</strong></span>
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            ${gList.map(g => `
+              <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:6px 0; font-weight:600;">${this.escapeHTML(g.name || '')}</td>
+                <td style="padding:6px 0; text-align:center;">${g.party_size || 1} άτομα</td>
+                <td style="padding:6px 0; text-align:right;">${g.rsvp_status === 'yes' ? '✅ Επιβεβαιώθηκε' : g.rsvp_status === 'no' ? '❌ Ακυρώθηκε' : '⏳ Εκκρεμεί'}</td>
+              </tr>
+            `).join('')}
+          </table>
+        </div>
+      `;
+    }
+
+    const totalInvitedPeople = receptionGuests.reduce((s, g) => s + (g.party_size || 1), 0);
+    const totalConfirmedPeople = confirmedGuests.reduce((s, g) => s + (g.rsvp_count || g.party_size || 1), 0);
+
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Λίστα Catering / Maître - ${this.escapeHTML(this.currentEvent.name || '')}</title>
+        <style>
+          body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; max-width: 900px; margin: 0 auto; }
+          .header { border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
+          .header h2 { margin: 0 0 4px 0; font-size: 22px; }
+          .header h3 { margin: 0; font-size: 15px; color: #64748b; font-weight: normal; }
+          .stats { display: flex; gap: 24px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-size: 14px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>🍽️ Λίστα Catering & Πλάνου Τραπεζιών</h2>
+          <h3>${this.escapeHTML(this.currentEvent.name || '')} — ${this.formatDate(this.currentEvent.date)}</h3>
+        </div>
+        <div class="stats">
+          <div>Προσκεκλημένοι Δεξίωσης: <strong>${receptionGuests.length} προσκλήσεις / ${totalInvitedPeople} άτομα</strong></div>
+          <div>Επιβεβαιωμένα Άτομα: <strong style="color:#16a34a;">${totalConfirmedPeople}</strong></div>
+        </div>
+        ${tablesHtml}
+      </body>
+      </html>
+    `);
+    win.document.close();
+    setTimeout(() => { win.focus(); win.print(); }, 250);
+  },
+  downloadAllQRCodes(){this.guests.forEach((g,i)=>{setTimeout(()=>{const div=document.createElement('div');div.id='qrcode-'+g.id;div.style.position='absolute';div.style.left='-9999px';document.body.appendChild(div);new QRCode(div,{text:g.rsvp_token,width:256,height:256});setTimeout(()=>{const img=div.querySelector('img');if(img){const a=document.createElement('a');a.href=img.src;a.download=`qr-${g.name}.png`;a.click();}document.body.removeChild(div);},300);},i*400);});this.showToast('Λήψη QR codes ξεκίνησε...');},
+
+  async sendBulkSMS(){
+    if(!this.currentEvent) return;
+    this.showToast('Προετοιμασία μαζικών SMS...');
+    const guestsWithPhone = this.guests.filter(g => g.phone);
+    if(!guestsWithPhone.length){ this.showToast('Κανένα τηλέφωνο διαθέσιμο'); return; }
+    
+    try {
+      const session = await this.db.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      const recipients = guestsWithPhone.map(g => ({
+        id: g.id,
+        phone: g.phone,
+        message: `${this.currentEvent.name.toUpperCase()}. ΣΕ ΠΡΟΣΚΑΛΟΥΜΕ! ΕΠΙΒΕΒΑΙΩΣΕ ΕΔΩ: ${location.origin}/event.html?token=${g.rsvp_token}`
+      }));
+
+      const response = await fetch('https://vozfcvludahuvwatfwmy.supabase.co/functions/v1/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+        body: JSON.stringify({ event_id: this.currentEvent.id, recipients: recipients })
+      });
+
+      const responseText = await response.text();
+      if (!response.ok) throw new Error(`Server error (${response.status}): ${responseText}`);
+
+      this.showToast('Τα μαζικά SMS στάλθηκαν với επιτυχία!');
+      this.refreshCurrentEvent();
+    } catch(err) {
+      console.error('Detailed Bulk SMS Error:', err);
+      alert('Σφάλμα SMS: ' + err.message);
+    }
+  },
+  async sendGuestSMS(guestId){
+    const g = this.guests.find(x => x.id === guestId);
+    if(!g || !g.phone) return this.showToast('Δεν υπάρχει τηλέφωνο');
+    const message = `${this.currentEvent.name.toUpperCase()}. ΣΕ ΠΡΟΣΚΑΛΟΥΜΕ! ΕΠΙΒΕΒΑΙΩΣΕ ΕΔΩ: ${location.origin}/event.html?token=${g.rsvp_token}`;
+    
+    try {
+      const session = await this.db.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+
+      const response = await fetch('https://vozfcvludahuvwatfwmy.supabase.co/functions/v1/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+        body: JSON.stringify({ event_id: this.currentEvent.id, recipients: [{ id: g.id, phone: g.phone, message: message }] })
+      });
+
+      const responseText = await response.text();
+      if (!response.ok) throw new Error(`Server error (${response.status}): ${responseText}`);
+
+      this.showToast('Το SMS στάλθηκε!');
+      this.refreshCurrentEvent();
+    } catch(err) {
+      console.error('Detailed SMS Error:', err);
+      alert('Σφάλμα SMS: ' + err.message);
+    }
+  },
+  async openSMSHistory(guestId){const g=this.guests.find(x=>x.id===guestId);if(!g)return;const {data}=await this.db.from('sms_deliveries').select('*').eq('guest_id',guestId).order('created_at',{ascending:false});const content=document.getElementById('sms-history-content');if(!data||!data.length){content.innerHTML='<p class="text-center text-slate-400 py-4">Κανένα SMS</p>';}else{content.innerHTML=data.map(s=>`<div class="flex items-center justify-between bg-slate-50 rounded-xl p-3"><div><p class="text-xs font-bold text-slate-700">SMS #${s.sms_id}</p><p class="text-xs text-slate-500">${this.formatDate(s.created_at)}</p></div><span class="px-2 py-1 rounded-full text-xs font-bold ${s.status==='DELIVERED'?'bg-emerald-100 text-emerald-700':s.status==='QUEUE'?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-600'}">${s.status}</span></div>`).join('');}document.getElementById('modal-sms-history').classList.remove('hidden');document.getElementById('modal-sms-history').classList.add('flex');},
+
+  renderPhotos() {
+    const gallery = document.getElementById('photos-gallery');
+    const empty = document.getElementById('photos-empty');
+    if (!this.photos.length) { gallery.innerHTML = ''; empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+    gallery.innerHTML = this.photos.map((p, i) => `
+      <div class="photo-item" onclick="app.openLightbox(${i})">
+        ${p.is_cover ? '<span class="cover-badge">✨ ΕΞΩΦΥΛΛΟ</span>' : ''}
+        <img src="${p.public_url}" alt="" loading="lazy">
+        <div class="photo-overlay">
+          <p class="text-white text-xs font-medium truncate">${this.formatDate(p.created_at)}</p>
+          <button onclick="event.stopPropagation(); app.deletePhoto('${p.id}')" class="mt-1 text-white/80 hover:text-red-400 text-xs">🗑️ Διαγραφή</button>
+        </div>
+      </div>
+    `).join('');
+  },
+  openUploadModal() {
+    const isPremium = this.currentEvent?.plan === 'premium';
+    const limit = isPremium ? 100 : 5;
+    const warning = document.getElementById('upload-limit-warning');
+    if (!isPremium && this.photos.length >= limit) {
+      alert('Έχετε φτάσει το όριο των 5 φωτογραφιών για τον Free λογαριασμό.');
+      return;
+    }
+    if (!isPremium) warning.classList.remove('hidden'); else warning.classList.add('hidden');
+    document.getElementById('modal-upload').classList.remove('hidden');
+    document.getElementById('modal-upload').classList.add('flex');
+  },
+  async handlePhotoUpload(e) {
+    const files = Array.from(e.target.files); if (!files.length) return;
+    const isPremium = this.currentEvent?.plan === 'premium';
+    const limit = isPremium ? 100 : 5;
+    if (!isPremium && this.photos.length + files.length > limit) {
+      alert(`Μπορείτε να ανεβάσετε ακόμα ${limit - this.photos.length} φωτογραφίες στον Free λογαριασμό.`);
+      return;
+    }
+
+    const progressBar = document.getElementById('upload-progress-bar');
+    const progressDiv = document.getElementById('upload-progress');
+    const status = document.getElementById('upload-status');
+    progressDiv.classList.remove('hidden');
+    let successCount = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      status.textContent = `Ανέβασμα ${i+1} / ${files.length}...`;
+      progressBar.style.width = `${((i) / files.length) * 100}%`;
+      const path = `${this.user.id}/${this.currentEvent.id}/${Date.now()}_${file.name}`;
+
+      const { error: upError } = await this.db.storage.from('event-photos').upload(path, file);
+      if (upError) { continue; }
+
+      const { data: urlData } = this.db.storage.from('event-photos').getPublicUrl(path);
+      const publicUrl = urlData?.publicUrl || `https://vozfcvludahuvwatfwmy.supabase.co/storage/v1/object/public/event-photos/${path}`;
+
+      const { error: insertError } = await this.db.from('event_photos').insert([{ 
+        event_id: this.currentEvent.id, user_id: this.user.id, public_url: publicUrl, storage_path: path 
+      }]);
+
+      if (insertError) {
+        await this.db.storage.from('event-photos').remove([path]);
+        continue;
+      }
+      successCount++;
+    }
+
+    progressBar.style.width = '100%';
+    status.textContent = `Ολοκληρώθηκε! ${successCount}/${files.length} φωτογραφίες.`;
+    setTimeout(() => { 
+      progressDiv.classList.add('hidden'); 
+      this.closeModal('modal-upload'); 
+      this.refreshPhotos(); 
+    }, 1200);
+  },
+  openCoverSelector() {
+    const gallery = document.getElementById('cover-gallery');
+    gallery.innerHTML = this.photos.map((p) => `
+      <div onclick="app.setCover('${p.id}')" class="aspect-square rounded-xl overflow-hidden cursor-pointer border-2 ${p.is_cover ? 'border-amber-500' : 'border-slate-200'} hover:border-amber-400 transition-all">
+        <img src="${p.public_url}" class="w-full h-full object-cover">
+      </div>
+    `).join('');
+    document.getElementById('modal-cover').classList.remove('hidden');
+    document.getElementById('modal-cover').classList.add('flex');
+  },
+  async setCover(photoId) {
+    await this.db.from('event_photos').update({ is_cover: false }).eq('event_id', this.currentEvent.id);
+    await this.db.from('event_photos').update({ is_cover: true }).eq('id', photoId);
+    await this.db.from('events').update({ cover_photo_url: this.photos.find(p => p.id === photoId)?.public_url || null }).eq('id', this.currentEvent.id);
+    this.showToast('Εξώφυλλο ενημερώθηκε!');
+    this.closeModal('modal-cover');
+    this.refreshPhotos();
+    this.loadEvents();
+  },
+  async deletePhoto(id) {
+    if (!confirm('Διαγραφή φωτογραφίας;')) return;
+    const photo = this.photos.find(p => p.id === id);
+    try {
+      await this.db.from('event_photos').delete().eq('id', id);
+      if (photo?.storage_path) await this.db.storage.from('event-photos').remove([photo.storage_path]);
+      this.showToast('Η φωτογραφία διαγράφηκε!');
+      this.refreshPhotos();
+    } catch (err) {
+      alert('Σφάλμα διαγραφής: ' + err.message);
+    }
+  },
+  openLightbox(index) {
+    this.photoIndex = index;
+    document.getElementById('lightbox-img').src = this.photos[index]?.public_url || '';
+    document.getElementById('lightbox').classList.remove('hidden');
+    document.getElementById('lightbox').classList.add('flex');
+  },
+  closeLightbox() { document.getElementById('lightbox').classList.add('hidden'); document.getElementById('lightbox').classList.remove('flex'); },
+  prevPhoto() { if (this.photoIndex > 0) this.openLightbox(this.photoIndex - 1); },
+  nextPhoto() { if (this.photoIndex < this.photos.length - 1) this.openLightbox(this.photoIndex + 1); },
+  async refreshPhotos() {
+    if (!this.currentEvent) return;
+    const { data: photos } = await this.db.from('event_photos').select('id,event_id,user_id,storage_path,public_url,caption,uploaded_by,created_at,is_cover').eq('event_id', this.currentEvent.id).order('created_at', { ascending: false });
+    this.photos = photos || [];
+    this.renderPhotos();
+  },
+
+  async refreshCurrentEvent(){
+    if(!this.currentEvent)return;
+    const {data:guests}=await this.db.from('guests').select('*').eq('event_id',this.currentEvent.id).order('name');
+    this.guests=guests||[];
+    const {data:tables}=await this.db.from('tables').select('*').eq('event_id',this.currentEvent.id).order('name');
+    this.tables=tables||[];
+    this.renderGuests();this.renderTables();this.renderRSVP();this.renderReception();this.updateStats();this.refreshPhotos();
+    await this.loadEvents();
+  },
+  generateToken(){return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);});},
+  escapeHTML(str){if(!str)return'';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');},
+  formatDate(date){if(!date)return'—';const d=new Date(date);return d.toLocaleDateString('el-GR',{day:'numeric',month:'short',year:'numeric'});},
+  sanitizeSlug(str){if(!str)return'';return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');},
+  showToast(message){const container=document.getElementById('toast-container');const toast=document.createElement('div');toast.className='toast bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium';toast.textContent=message;container.appendChild(toast);setTimeout(()=>toast.remove(),3000);},
+  upgradePlan(){alert('Η αναβάθμιση σε Premium θα είναι διαθέσιμη σύντομα!');},
+};
+document.addEventListener('DOMContentLoaded',()=>app.init());
+</script>
+</body>
+</html>
