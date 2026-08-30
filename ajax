@@ -1,1 +1,127 @@
 
+<?php
+// ajax.php - Διαχείριση αιτημάτων και αποστολής email μέσω SMTP (PHPMailer)
+
+header('Content-Type: application/json; charset=utf-8');
+
+require 'PHPMailer/Exception.php';
+require 'PHPMailer/PHPMailer.php';
+require 'PHPMailer/SMTP.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+$input = json_decode(file_get_contents('php://input'), true);
+
+if (isset($input['action']) && $input['action'] === 'send_email') {
+    $to = $input['email'] ?? '';
+    $guestName = $input['name'] ?? 'Καλεσμένος';
+    $eventName = $input['event_name'] ?? 'Η Εκδήλωσή μας';
+    $eventDate = $input['event_date'] ?? '';
+    $eventTime = $input['event_time'] ?? '';
+    $eventLocation = $input['event_location'] ?? '';
+    $coverPhoto = $input['cover_photo'] ?? '';
+    $inviteLink = $input['link'] ?? '';
+
+    if (empty($to) || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['success' => false, 'error' => 'Μη έγκυρο email']);
+        exit;
+    }
+
+    $subject = "✨ Πρόσκληση: " . $eventName;
+    $dateFormatted = !empty($eventDate) ? date('d/m/Y', strtotime($eventDate)) : '';
+
+    $message = "
+    <!DOCTYPE html>
+    <html lang='el'>
+    <head>
+        <meta charset='UTF-8'>
+        <style>
+            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 0; }
+            .wrapper { width: 100%; table-layout: fixed; background-color: #f1f5f9; padding: 40px 0; }
+            .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+            .cover-img { width: 100%; max-height: 250px; object-fit: cover; display: block; }
+            .content { padding: 35px 30px; text-align: center; color: #334155; }
+            .details-box { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin: 20px 0; text-align: left; }
+            .details-row { font-size: 14px; color: #475569; margin-bottom: 6px; }
+            .btn { background-color: #e11d48; color: #ffffff !important; padding: 14px 28px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block; font-size: 16px; box-shadow: 0 4px 10px rgba(225,29,72,0.2); }
+            .footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+        </style>
+    </head>
+    <body>
+        <center class='wrapper'>
+            <table class='main' width='100%' cellpadding='0' cellspacing='0'>";
+            
+   if (!empty($coverPhoto)) {
+        $message .= "<tr>
+            <td style='height: 250px; overflow: hidden; background-color: #f8fafc; text-align: center;'>
+                <img src='{$coverPhoto}' alt='Εξώφυλλο Εκδήλωσης' width='600' height='250' style='display: block; width: 100%; max-width: 600px; height: 250px; object-fit: cover; margin: 0 auto;'>
+            </td>
+        </tr>";
+    }
+
+    $message .= "
+                <tr>
+                    <td class='content'>
+                        <h2 style='color: #0f172a; font-size: 22px; margin-top: 0;'>Γεια σου, {$guestName}!</h2>
+                        <p style='font-size: 16px; line-height: 1.6; color: #475569; margin-bottom: 15px;'>Σε περιμένουμε με μεγάλη χαρά στην εκδήλωση:</p>
+                        <h3 style='color: #e11d48; font-size: 20px; margin: 0 0 20px 0;'>{$eventName}</h3>";
+
+    if (!empty($dateFormatted) || !empty($eventLocation)) {
+        $message .= "<div class='details-box'>";
+        if (!empty($dateFormatted)) {
+            $message .= "<div class='details-row'>📅 <strong>Ημερομηνία:</strong> {$dateFormatted}" . (!empty($eventTime) ? " στις {$eventTime}" : "") . "</div>";
+        }
+        if (!empty($eventLocation)) {
+            $message .= "<div class='details-row' style='margin-bottom:0;'>📍 <strong>Τοποθεσία:</strong> {$eventLocation}</div>";
+        }
+        $message .= "</div>";
+    }
+
+    $message .= "
+                        <table align='center' cellpadding='0' cellspacing='0' style='margin: 25px auto;'>
+                            <tr>
+                                <td align='center'>
+                                    <a href='{$inviteLink}' target='_blank' class='btn'>Επιβεβαίωση Παρουσίας (RSVP)</a>
+                                </td>
+                            </tr>
+                        </table>
+                        <p style='font-size: 12px; color: #94a3b8; margin-top: 25px;'>
+                            Εναλλακτικά, αντιγράψτε τον σύνδεσμο:<br>
+                            <a href='{$inviteLink}' style='color: #e11d48; word-break: break-all;'>{$inviteLink}</a>
+                        </p>
+                    </td>
+                </tr>
+                <tr><td class='footer'>TheGuestList.gr &bull; Όλες οι απαντήσεις ενημερώνονται αυτόματα.</td></tr>
+            </table>
+        </center>
+    </body>
+    </html>
+    ";
+
+    $mail = new PHPMailer(true);
+
+    try {
+        $mail->isSMTP();
+        $mail->Host       = 'mail.theguestlist.gr'; 
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'noreply@theguestlist.gr'; 
+        $mail->Password   = 'A8;=n~2E@fq]hZYo'; // ΠΡΟΣΟΧΗ: Βάλε τον κωδικό του email εδώ!
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; 
+        $mail->Port       = 465; 
+
+        $mail->setFrom('noreply@theguestlist.gr', 'The Guest List');
+        $mail->addAddress($to, $guestName);
+        $mail->CharSet = 'UTF-8';
+
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body    = $message;
+
+        $mail->send();
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => 'Σφάλμα SMTP: ' . $mail->ErrorInfo]);
+    }
+    exit;
+}
